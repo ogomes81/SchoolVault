@@ -9,8 +9,13 @@ export interface OCRResponse {
     event_date?: string;
     teacher?: string;
     subject?: string;
+    grade_level?: string;
+    school_name?: string;
+    urgency?: 'low' | 'medium' | 'high';
   };
   suggestedTags: string[];
+  confidence?: number;
+  summary?: string;
 }
 
 export const processOCR = async (storagePath: string): Promise<OCRResponse> => {

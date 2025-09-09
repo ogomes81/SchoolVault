@@ -81,16 +81,31 @@ export default function UploadPage() {
       try {
         const ocrResult = await processOCR(storagePath);
         
-        // Update document with OCR results
-        await apiRequest('PATCH', `/api/documents/${createdDoc.id}`, {
+        // Update document with AI-enhanced OCR results
+        const updateData = {
           ocrText: ocrResult.text,
-          docType: docType || ocrResult.classification,
+          docType: docType && docType !== 'auto-detect' ? docType : ocrResult.classification,
           dueDate: dueDate || ocrResult.extracted.due_date || null,
           eventDate: eventDate || ocrResult.extracted.event_date || null,
           teacher: teacher || ocrResult.extracted.teacher || null,
           subject: subject || ocrResult.extracted.subject || null,
           tags: tags.length > 0 ? tags : ocrResult.suggestedTags,
-        });
+        };
+
+        // Show AI insights to user
+        if (ocrResult.confidence && ocrResult.confidence > 0.8) {
+          toast({
+            title: "🤖 AI Analysis Complete",
+            description: `Classified as ${ocrResult.classification} with ${Math.round(ocrResult.confidence * 100)}% confidence`,
+          });
+        } else if (ocrResult.summary) {
+          toast({
+            title: "📄 Document Processed",
+            description: ocrResult.summary,
+          });
+        }
+
+        await apiRequest('PATCH', `/api/documents/${createdDoc.id}`, updateData);
       } catch (ocrError) {
         console.warn('OCR processing failed:', ocrError);
         // Continue without OCR - document is still created
@@ -582,7 +597,7 @@ export default function UploadPage() {
                       Processing with Azure OCR...
                     </>
                   ) : (
-                    <>🔍 Scan & Extract Text</>
+                    <>🤖 AI-Powered Scan & Classify</>
                   )}
                 </Button>
               </div>

@@ -101,78 +101,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Auto-classify document based on extracted text
-      const text = extractedText.toLowerCase();
-      let classification = 'Other';
+      // Use AI-powered classification for better accuracy
+      const { classifyDocumentWithAI } = require('./aiClassifier');
       
-      if (text.includes('homework') || text.includes('assignment') || text.includes('due date')) {
-        classification = 'Homework';
-      } else if (text.includes('permission') || text.includes('field trip') || text.includes('consent')) {
-        classification = 'Permission Slip';
-      } else if (text.includes('report card') || text.includes('grades') || text.includes('semester')) {
-        classification = 'Report Card';
-      } else if (text.includes('event') || text.includes('fundraiser') || text.includes('meeting')) {
-        classification = 'Flyer';
-      }
-
-      // Extract metadata
-      const extracted: any = {};
-      
-      // Extract dates (looking for various date patterns)
-      const datePatterns = [
-        /due\s+(?:date\s+)?(?:is\s+)?(?:on\s+)?(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
-        /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g,
-        /(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}/gi
-      ];
-      
-      for (const pattern of datePatterns) {
-        const match = text.match(pattern);
-        if (match) {
-          extracted.due_date = match[1] || match[0];
-          break;
-        }
-      }
-
-      // Extract teacher names
-      const teacherPatterns = [
-        /(?:teacher|instructor|mr\.|mrs\.|ms\.|miss)\s+([a-z]+)/i,
-        /([a-z]+)\s+(?:teacher|class)/i
-      ];
-      
-      for (const pattern of teacherPatterns) {
-        const match = text.match(pattern);
-        if (match) {
-          extracted.teacher = match[1];
-          break;
-        }
-      }
-
-      // Extract subjects
-      const subjectKeywords = ['math', 'science', 'english', 'reading', 'social studies', 'history', 'art', 'music', 'pe', 'physical education'];
-      for (const subject of subjectKeywords) {
-        if (text.includes(subject)) {
-          extracted.subject = subject.charAt(0).toUpperCase() + subject.slice(1);
-          break;
-        }
-      }
-
-      // Generate suggested tags
-      const suggestedTags = [];
-      if (classification !== 'Other') {
-        suggestedTags.push(classification.toLowerCase().replace(' ', '-'));
-      }
-      if (extracted.subject) {
-        suggestedTags.push(extracted.subject.toLowerCase());
-      }
-      if (text.includes('urgent') || text.includes('important')) {
-        suggestedTags.push('urgent');
+      let aiResult;
+      try {
+        aiResult = await classifyDocumentWithAI(extractedText);
+        console.log('AI Classification Result:', aiResult);
+      } catch (aiError) {
+        console.warn('AI Classification failed, using fallback:', aiError);
+        // Fallback to basic classification
+        aiResult = {
+          classification: 'Other',
+          confidence: 0.3,
+          extracted: {},
+          suggestedTags: ['document'],
+          summary: 'Basic OCR extraction completed'
+        };
       }
 
       const response_data = {
         text: extractedText.trim(),
-        classification: classification as 'Homework' | 'Flyer' | 'Permission Slip' | 'Report Card' | 'Other',
-        extracted,
-        suggestedTags
+        classification: aiResult.classification,
+        extracted: aiResult.extracted,
+        suggestedTags: aiResult.suggestedTags,
+        confidence: aiResult.confidence,
+        summary: aiResult.summary
       };
       
       res.json(response_data);
