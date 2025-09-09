@@ -19,7 +19,7 @@ export default function ChildSelector({ children, selectedChildId, onChildChange
           <SelectItem value="all">All Children</SelectItem>
         )}
         {children.map((child) => (
-          <SelectItem key={child.id} value={child.id}>
+          <SelectItem key={child.id} value={child.id || 'no-id'}>
             {child.name} ({child.grade})
           </SelectItem>
         ))}

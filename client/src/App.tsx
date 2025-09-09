@@ -10,6 +10,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import UploadPage from "@/pages/UploadPage";
 import DocumentDetailPage from "@/pages/DocumentDetailPage";
 import PublicSharePage from "@/pages/PublicSharePage";
+import ChildrenPage from "@/pages/ChildrenPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/app" component={DashboardPage} />
       <Route path="/app/upload" component={UploadPage} />
+      <Route path="/app/children" component={ChildrenPage} />
       <Route path="/app/doc/:id" component={DocumentDetailPage} />
       <Route path="/s/:token" component={PublicSharePage} />
       <Route path="/">

@@ -399,7 +399,7 @@ export default function DashboardPage() {
           <Button 
             variant="ghost" 
             className="flex flex-col items-center p-3 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" 
-            onClick={() => toast({ title: "Children Management", description: "This feature is coming soon!" })}
+            onClick={() => navigate('/app/children')}
             data-testid="nav-children"
           >
             <Users className="w-5 h-5 mb-1" />

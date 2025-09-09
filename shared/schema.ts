@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, uuid, boolean, date, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, uuid, boolean, date, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -21,6 +21,7 @@ export const children = pgTable("children", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   grade: text("grade").notNull(),
+  birthYear: integer("birth_year"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
