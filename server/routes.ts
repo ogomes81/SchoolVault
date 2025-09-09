@@ -184,6 +184,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      // Ensure user exists in database before creating child
+      let user = await storage.getUser(userId);
+      if (!user) {
+        console.log(`User ${userId} not found in database, attempting to get from request`);
+        // Try to get email from request headers or create a placeholder
+        const userEmail = req.headers['x-user-email'] as string || `user-${userId}@example.com`;
+        try {
+          user = await storage.createUser({ id: userId, email: userEmail });
+          console.log(`Created user in database: ${user.id}`);
+        } catch (createError) {
+          console.error('Failed to create user:', createError);
+          return res.status(500).json({ message: "Failed to ensure user exists" });
+        }
+      }
+
       const childData = insertChildSchema.parse({
         ...req.body,
         userId,

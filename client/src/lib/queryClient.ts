@@ -19,6 +19,7 @@ export async function apiRequest(
   
   if (user) {
     headers['x-user-id'] = user.id;
+    headers['x-user-email'] = user.email;
   }
   
   const res = await fetch(url, {
@@ -42,6 +43,7 @@ export const getQueryFn: <T>(options: {
     const headers: HeadersInit = {};
     if (user) {
       headers['x-user-id'] = user.id;
+      headers['x-user-email'] = user.email;
     }
     
     const res = await fetch(queryKey.join("/") as string, {
