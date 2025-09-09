@@ -1,13 +1,30 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { processOCRRequest } from "./ocr";
 import { z } from "zod";
 import { insertDocumentSchema, insertChildSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // OCR processing route
-  app.post("/api/ocr", processOCRRequest);
+  // Mock OCR processing route
+  app.post("/api/ocr", async (req, res) => {
+    try {
+      // Mock OCR response - in a real app you'd process the image here
+      const mockResponse = {
+        text: "Sample text extracted from document",
+        classification: "Other" as const,
+        extracted: {},
+        suggestedTags: ["document"]
+      };
+      
+      res.json(mockResponse);
+    } catch (error) {
+      console.error("OCR processing error:", error);
+      res.status(500).json({ 
+        message: "Failed to process OCR",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Documents routes
   app.get("/api/documents", async (req, res) => {

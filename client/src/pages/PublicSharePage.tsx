@@ -203,7 +203,7 @@ export default function PublicSharePage() {
                 <div className="flex flex-wrap gap-2">
                   {(document.tags as string[]).map((tag, index) => (
                     <Badge key={index} variant="outline" data-testid={`tag-${index}`}>
-                      {String(tag)}
+                      {tag}
                     </Badge>
                   ))}
                 </div>

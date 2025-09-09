@@ -1,57 +1,71 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+// Simple local authentication and storage
+interface User {
+  id: string;
+  email: string;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let currentUser: User | null = null;
 
 export const getAuthHeaders = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.access_token) {
+  if (!currentUser) {
     throw new Error('No authenticated session');
   }
   
   return {
-    Authorization: `Bearer ${session.access_token}`,
+    'x-user-id': currentUser.id,
   };
 };
 
-export const getCurrentUser = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser();
+export const getCurrentUser = async (): Promise<User | null> => {
+  return currentUser;
+};
+
+export const signIn = async (email: string, password: string): Promise<User> => {
+  // Simple mock authentication - in real app this would verify against database
+  const user = {
+    id: 'user-' + Math.random().toString(36).substring(7),
+    email: email
+  };
   
-  if (error) {
-    throw error;
-  }
-  
+  currentUser = user;
+  localStorage.setItem('currentUser', JSON.stringify(user));
   return user;
 };
 
-export const uploadDocument = async (file: File, userId: string, documentId: string) => {
-  const filePath = `documents/${userId}/${documentId}.jpg`;
-  
-  const { error } = await supabase.storage
-    .from('documents')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: true
-    });
-    
-  if (error) {
-    throw error;
-  }
-  
-  return filePath;
+export const signUp = async (email: string, password: string): Promise<User> => {
+  // Simple mock registration
+  return signIn(email, password);
 };
 
-export const getDocumentUrl = (storagePath: string) => {
-  const { data } = supabase.storage
-    .from('documents')
-    .getPublicUrl(storagePath);
-    
-  return data.publicUrl;
+export const signOut = async (): Promise<void> => {
+  currentUser = null;
+  localStorage.removeItem('currentUser');
+};
+
+export const initAuth = (): User | null => {
+  const stored = localStorage.getItem('currentUser');
+  if (stored) {
+    currentUser = JSON.parse(stored);
+  }
+  return currentUser;
+};
+
+export const uploadDocument = async (file: File, userId: string, documentId: string): Promise<string> => {
+  // Convert file to base64 for storage
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      const filePath = `documents/${userId}/${documentId}`;
+      localStorage.setItem(filePath, base64);
+      resolve(filePath);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
+export const getDocumentUrl = (storagePath: string): string => {
+  const base64 = localStorage.getItem(storagePath);
+  return base64 || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xODAgMTUwTDIyMCAxMTBMMjYwIDE1MEwyMjAgMTkwWiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
 };

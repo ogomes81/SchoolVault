@@ -127,7 +127,7 @@ export default function DocCard({ document, onDocumentClick, onShare, onExportCa
           <div className="flex flex-wrap gap-1 mb-3">
             {(document.tags as string[]).slice(0, 3).map((tag, index) => (
               <Badge key={index} variant="outline" className="text-xs">
-                {String(tag)}
+                {tag}
               </Badge>
             ))}
             {(document.tags as string[]).length > 3 && (

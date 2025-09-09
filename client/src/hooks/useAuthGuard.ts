@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { supabase, getCurrentUser } from '@/lib/supabase';
-import type { User } from '@supabase/supabase-js';
+import { getCurrentUser, signOut as authSignOut, initAuth } from '@/lib/supabase';
+
+interface User {
+  id: string;
+  email: string;
+}
 
 export const useAuthGuard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -11,7 +15,7 @@ export const useAuthGuard = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const currentUser = await getCurrentUser();
+        const currentUser = initAuth();
         setUser(currentUser);
         
         if (!currentUser) {
@@ -26,25 +30,12 @@ export const useAuthGuard = () => {
     };
 
     checkAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user);
-          navigate('/app');
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          navigate('/auth');
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await authSignOut();
+    setUser(null);
+    navigate('/auth');
   };
 
   return { user, loading, signOut };

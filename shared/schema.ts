@@ -32,7 +32,7 @@ export const documents = pgTable("documents", {
   docType: text("doc_type").notNull().default("Other"),
   storagePath: text("storage_path").notNull(),
   ocrText: text("ocr_text"),
-  tags: jsonb("tags").default([]),
+  tags: jsonb("tags").$type<string[]>().default([]),
   dueDate: date("due_date"),
   eventDate: date("event_date"),
   teacher: text("teacher"),

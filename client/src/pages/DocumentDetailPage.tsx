@@ -450,7 +450,7 @@ export default function DocumentDetailPage() {
                     <Label className="text-sm font-medium text-card-foreground mb-2 block">Tags</Label>
                     <div className="flex flex-wrap gap-2">
                       {(document.tags as string[]).map((tag, index) => (
-                        <Badge key={index} variant="outline">{String(tag)}</Badge>
+                        <Badge key={index} variant="outline">{tag}</Badge>
                       ))}
                     </div>
                   </div>

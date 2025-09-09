@@ -16,11 +16,6 @@ export interface OCRResponse {
 export const processOCR = async (storagePath: string): Promise<OCRResponse> => {
   const headers = await getAuthHeaders();
   
-  const response = await apiRequest('POST', '/api/ocr', {
-    storagePath,
-  });
-  
-  // Add auth headers manually since apiRequest doesn't include them
   const authResponse = await fetch('/api/ocr', {
     method: 'POST',
     headers: {
