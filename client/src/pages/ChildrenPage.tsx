@@ -40,6 +40,11 @@ export default function ChildrenPage() {
     queryKey: ['/api/children'],
     enabled: !!user,
   });
+  
+  // Debug: log children data
+  console.log('Children data from API:', children);
+  console.log('Children loading:', childrenLoading);
+  console.log('Current user:', user);
 
   // Create child mutation
   const createChildMutation = useMutation({
