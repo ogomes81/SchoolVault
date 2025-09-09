@@ -21,16 +21,34 @@ export interface AIClassificationResult {
   summary: string;
 }
 
-export async function classifyDocumentWithAI(ocrText: string): Promise<AIClassificationResult> {
+export async function classifyDocumentWithAI(ocrText: string, enhancedContext?: {
+  ocrText: string;
+  detectedObjects: Array<{name: string, confidence: number}>;
+  semanticTags: string[];
+  imageDescription: string;
+}): Promise<AIClassificationResult> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OpenAI API key not configured");
+  }
+
+  // Build enhanced prompt with object detection data
+  let contextInfo = '';
+  if (enhancedContext) {
+    contextInfo = `
+
+ENHANCED CONTEXT FROM IMAGE ANALYSIS:
+- Detected Objects: ${enhancedContext.detectedObjects.map(obj => `${obj.name} (${Math.round(obj.confidence * 100)}%)`).join(', ')}
+- Visual Tags: ${enhancedContext.semanticTags.join(', ')}
+- Image Description: "${enhancedContext.imageDescription}"
+
+Use this visual context to enhance your analysis and generate comprehensive semantic tags.`;
   }
 
   const prompt = `
 You are an expert at analyzing school documents. Analyze the following text extracted from a school document and provide detailed classification and metadata extraction.
 
 Document Text:
-"${ocrText}"
+"${ocrText}"${contextInfo}
 
 Please analyze this document and respond with JSON in exactly this format:
 {
@@ -45,16 +63,23 @@ Please analyze this document and respond with JSON in exactly this format:
     "school_name": "school name if mentioned",
     "urgency": "low, medium, or high based on language used"
   },
-  "suggestedTags": "array of 3-5 relevant tags based on content",
+  "suggestedTags": "array of 3-8 relevant tags based on content AND visual elements - include semantic concepts like 'sweet', 'dessert', 'cake', 'food' if detected in image",
   "summary": "brief 1-2 sentence summary of what this document is about"
 }
 
 Classification Guidelines:
 - Homework: Assignments, worksheets, practice problems, projects with due dates
 - Permission Slip: Forms requiring parent signature for field trips, activities, medical forms
-- Flyer: Announcements, event notifications, fundraising info, newsletters
+- Flyer: Announcements, event notifications, fundraising info, newsletters, including food-related events
 - Report Card: Grades, progress reports, academic assessments
 - Other: Anything that doesn't clearly fit the above categories
+
+SEMANTIC TAG GENERATION:
+- Include visual object tags (e.g., "cake", "food", "dessert")
+- Add semantic concept tags (e.g., "sweet", "birthday", "celebration")
+- Consider contextual meanings (e.g., "coconut" + "cake" = "tropical", "sweet treat")
+- Include text-based tags from OCR content
+- Generate searchable terms that parents might use
 
 Extract dates carefully - look for various formats like "due 3/15", "March 15th", "by Friday", etc.
 For urgency, consider words like "urgent", "ASAP", "deadline", "important", "reminder".

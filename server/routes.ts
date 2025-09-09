@@ -137,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (visionAnalysis) {
         // Extract detected objects
         if (visionAnalysis.objects) {
-          detectedObjects = visionAnalysis.objects.map(obj => ({
+          detectedObjects = visionAnalysis.objects.map((obj: any) => ({
             name: obj.object,
             confidence: obj.confidence
           }));
@@ -146,8 +146,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Extract tags with confidence scores
         if (visionAnalysis.tags) {
           semanticTags = visionAnalysis.tags
-            .filter(tag => tag.confidence > 0.5) // Only high-confidence tags
-            .map(tag => tag.name);
+            .filter((tag: any) => tag.confidence > 0.5) // Only high-confidence tags
+            .map((tag: any) => tag.name);
         }
         
         // Extract image description
@@ -209,14 +209,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('Metadata enhancement failed:', enhanceError);
       }
 
+      // Combine all tags: AI-generated + semantic + object detection
+      const allTags = [
+        ...enhancedData.suggestedTags,
+        ...semanticTags,
+        ...detectedObjects.map(obj => obj.name)
+      ];
+      
+      // Remove duplicates and limit to reasonable number
+      const uniqueTags = [...new Set(allTags)].slice(0, 10);
+
       const response_data = {
         text: extractedText.trim(),
         classification: enhancedData.classification,
         extracted: enhancedData.extracted,
-        suggestedTags: enhancedData.suggestedTags,
+        suggestedTags: uniqueTags,
         confidence: enhancedData.confidence,
         summary: enhancedData.summary,
-        insights: enhancedData.additionalInsights || []
+        insights: enhancedData.additionalInsights || [],
+        // Include object detection data for debugging/transparency
+        visionData: {
+          detectedObjects,
+          semanticTags,
+          imageDescription
+        }
       };
       
       res.json(response_data);
