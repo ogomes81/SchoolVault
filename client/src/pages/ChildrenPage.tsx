@@ -341,7 +341,11 @@ export default function ChildrenPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <>
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-700 font-medium">Found {children.length} child(ren) - Data loaded successfully!</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {children.map((child) => (
               <Card key={child.id} className="bg-white/60 backdrop-blur-sm shadow-xl border-0 hover:shadow-2xl transition-shadow">
                 <CardHeader className="pb-2">
@@ -391,7 +395,8 @@ export default function ChildrenPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </main>
     </div>
