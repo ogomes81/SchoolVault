@@ -4,6 +4,49 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { insertDocumentSchema, insertChildSchema, insertUserSchema } from "@shared/schema";
 
+// Background processing function
+async function processDocumentInBackground(documentId: string, storagePath: string) {
+  try {
+    console.log(`Starting background processing for document ${documentId}`);
+    
+    // Process OCR in background
+    const { processOCRWithAzure, classifyDocumentWithOpenAI } = require('./aiClassifier');
+    
+    // Step 1: Extract text with Azure OCR
+    const ocrText = await processOCRWithAzure(storagePath);
+    console.log(`OCR completed for document ${documentId}`);
+    
+    // Step 2: Classify with OpenAI
+    const aiResult = await classifyDocumentWithOpenAI(ocrText);
+    console.log(`AI classification completed for document ${documentId}`);
+    
+    // Step 3: Update document with processed data
+    await storage.updateDocument(documentId, {
+      ocrText: ocrText,
+      docType: aiResult.classification,
+      dueDate: aiResult.extracted.due_date || null,
+      eventDate: aiResult.extracted.event_date || null,
+      teacher: aiResult.extracted.teacher || null,
+      subject: aiResult.extracted.subject || null,
+      tags: aiResult.suggestedTags || [],
+      status: 'processed'
+    });
+    
+    console.log(`Document ${documentId} processing completed`);
+  } catch (error) {
+    console.error(`Background processing failed for document ${documentId}:`, error);
+    
+    // Mark as failed
+    try {
+      await storage.updateDocument(documentId, {
+        status: 'failed'
+      });
+    } catch (updateError) {
+      console.error(`Failed to update status to failed for document ${documentId}:`, updateError);
+    }
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // OCR processing route using Azure Computer Vision with AI enhancement
   app.post("/api/ocr", async (req, res) => {
@@ -227,6 +270,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const document = await storage.createDocument(documentData);
+      
+      // Start background processing if document has processing status
+      if (document.status === 'processing') {
+        processDocumentInBackground(document.id, document.storagePath);
+      }
+      
       res.status(201).json(document);
     } catch (error) {
       console.error("Error creating document:", error);

@@ -93,13 +93,14 @@ export const initAuth = (): User | null => {
   return currentUser;
 };
 
-export const uploadDocument = async (file: File, userId: string, documentId: string): Promise<string> => {
+export const uploadDocument = async (file: File, userId: string, documentId: string, customFileName?: string): Promise<string> => {
   // Convert file to base64 for storage
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
-      const filePath = `documents/${userId}/${documentId}`;
+      const fileName = customFileName || documentId;
+      const filePath = `documents/${userId}/${fileName}`;
       localStorage.setItem(filePath, base64);
       resolve(filePath);
     };

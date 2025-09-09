@@ -1,20 +1,14 @@
 import { useState, useRef } from 'react';
 import { useLocation } from 'wouter';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent } from '@/components/ui/card';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import TagInput from '@/components/TagInput';
-import DateField from '@/components/DateField';
-import { Camera, Upload, X, FileImage, GraduationCap, Crop, RotateCw } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { Camera, Upload, X, Check } from 'lucide-react';
 import { uploadDocument, getCurrentUser } from '@/lib/supabase';
-import { processOCR } from '@/lib/api';
-import type { Child, InsertDocument } from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+import type { InsertDocument } from '@shared/schema';
 
 export default function UploadPage() {
   const { user, loading: authLoading } = useAuthGuard();
@@ -22,116 +16,67 @@ export default function UploadPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Form state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // State
   const [showCameraCapture, setShowCameraCapture] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedPhotos, setCapturedPhotos] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [title, setTitle] = useState('');
-  const [selectedChildId, setSelectedChildId] = useState('');
-  const [docType, setDocType] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [eventDate, setEventDate] = useState('');
-  const [teacher, setTeacher] = useState('');
-  const [subject, setSubject] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
 
-  // Fetch children
-  const { data: children = [] } = useQuery<Child[]>({
-    queryKey: ['/api/children'],
-    enabled: !!user,
-  });
-
-  // Upload mutation
+  // Upload multiple photos as one document
   const uploadMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedFile || !user) {
-        throw new Error('No file selected or user not authenticated');
+    mutationFn: async (files: File[]) => {
+      if (!user || files.length === 0) {
+        throw new Error('No files selected or user not authenticated');
       }
 
       // Generate unique document ID
       const documentId = crypto.randomUUID();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       
-      // Upload file to Supabase Storage
-      const storagePath = await uploadDocument(selectedFile, user.id, documentId);
-      
-      // Create document record
+      // Upload each photo
+      const storagePaths: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileName = `${timestamp}-${i + 1}.jpg`;
+        const storagePath = await uploadDocument(file, user.id, documentId, fileName);
+        storagePaths.push(storagePath);
+      }
+
+      // Create document record with first photo as main storage path
       const documentData: InsertDocument = {
         userId: user.id,
-        childId: selectedChildId || null,
-        title: title || `Document ${new Date().toLocaleDateString()}`,
-        docType: docType || 'Other',
-        storagePath,
-        dueDate: dueDate || null,
-        eventDate: eventDate || null,
-        teacher: teacher || null,
-        subject: subject || null,
-        tags: tags,
+        childId: null, // Will be set later if needed
+        title: `Document ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+        docType: 'Other',
+        storagePath: storagePaths[0], // Main photo
+        status: 'processing',
         ocrText: null,
+        tags: [],
+        dueDate: null,
+        eventDate: null,
+        teacher: null,
+        subject: null,
         isShared: false,
         shareToken: null,
       };
 
       const response = await apiRequest('POST', '/api/documents', documentData);
       const createdDoc = await response.json();
-      
-      // Show immediate success - OCR will process in background
-      toast({
-        title: "✅ Document Saved!",
-        description: "AI processing started in background...",
-      });
-      
-      // Process OCR in background after document is saved
-      processOCR(storagePath).then((ocrResult) => {
-        // Update document with AI-enhanced OCR results in background
-        const updateData = {
-          ocrText: ocrResult.text,
-          docType: docType && docType !== 'auto-detect' ? ocrResult.classification : documentData.docType,
-          dueDate: dueDate || ocrResult.extracted.due_date || null,
-          eventDate: eventDate || ocrResult.extracted.event_date || null,
-          teacher: teacher || ocrResult.extracted.teacher || null,
-          subject: subject || ocrResult.extracted.subject || null,
-          tags: tags.length > 0 ? tags : ocrResult.suggestedTags,
-        };
 
-        // Update document in background
-        apiRequest('PATCH', `/api/documents/${createdDoc.id}`, updateData).then(() => {
-          // Show AI insights after processing
-          if (ocrResult.confidence && ocrResult.confidence > 0.8) {
-            toast({
-              title: "🤖 AI Analysis Complete",
-              description: `Classified as ${ocrResult.classification} with ${Math.round(ocrResult.confidence * 100)}% confidence`,
-            });
-          } else if (ocrResult.summary) {
-            toast({
-              title: "📄 AI Processing Complete",
-              description: ocrResult.summary,
-            });
-          }
-
-          // Show additional insights if available
-          if (ocrResult.insights && ocrResult.insights.length > 0) {
-            setTimeout(() => {
-              toast({
-                title: "💡 AI Insights",
-                description: ocrResult.insights?.[0] || "Additional information extracted",
-              });
-            }, 1000);
-          }
-        }).catch((patchError) => {
-          console.warn('Background OCR update failed:', patchError);
-        });
-      }).catch((ocrError) => {
-        console.warn('Background OCR processing failed:', ocrError);
-      });
+      // Store additional photos if any (you might want to modify schema for this)
+      // For now, we'll use the main photo only
       
       return createdDoc;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
-      // Navigate to dashboard immediately - background processing continues
+      toast({
+        title: "✅ Photos Saved!",
+        description: "Your document is being processed in the background...",
+      });
+      
+      // Navigate to dashboard
       navigate('/app');
     },
     onError: (error) => {
@@ -145,53 +90,62 @@ export default function UploadPage() {
   });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.type.startsWith('image/')) {
-        processImageFile(file);
-      } else {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image file.",
-          variant: "destructive",
-        });
-      }
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select image files only.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Process and upload the files immediately
+    processImageFiles(imageFiles);
   };
 
-  const processImageFile = async (file: File) => {
-    // Create a canvas to process the image
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
+  const processImageFiles = async (files: File[]) => {
+    const processedFiles: File[] = [];
     
-    img.onload = () => {
-      // Set canvas size to image size
-      canvas.width = img.width;
-      canvas.height = img.height;
+    for (const file of files) {
+      const processedFile = await enhanceImageFile(file);
+      processedFiles.push(processedFile);
+    }
+    
+    // Upload all processed files
+    uploadMutation.mutate(processedFiles);
+  };
+
+  const enhanceImageFile = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
       
-      // Draw image on canvas
-      ctx?.drawImage(img, 0, 0);
-      
-      // Apply document scanning enhancements
-      enhanceDocument(canvas, ctx);
-      
-      // Convert back to blob
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const enhancedFile = new File([blob], file.name, { type: 'image/jpeg' });
-          setSelectedFile(enhancedFile);
-          setPreviewUrl(URL.createObjectURL(enhancedFile));
-          
-          // Set default title if empty
-          if (!title) {
-            setTitle(file.name.replace(/\.[^/.]+$/, ''));
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        
+        // Apply document scanning enhancements
+        enhanceDocument(canvas, ctx);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const enhancedFile = new File([blob], file.name, { type: 'image/jpeg' });
+            resolve(enhancedFile);
+          } else {
+            resolve(file);
           }
-        }
-      }, 'image/jpeg', 0.9);
-    };
-    
-    img.src = URL.createObjectURL(file);
+        }, 'image/jpeg', 0.9);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const enhanceDocument = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D | null) => {
@@ -202,13 +156,12 @@ export default function UploadPage() {
     
     // Apply contrast and brightness enhancement for better OCR
     for (let i = 0; i < data.length; i += 4) {
-      // Increase contrast and brightness
       const contrast = 1.2;
       const brightness = 10;
       
-      data[i] = Math.min(255, Math.max(0, (data[i] - 128) * contrast + 128 + brightness));     // Red
-      data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * contrast + 128 + brightness)); // Green
-      data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * contrast + 128 + brightness)); // Blue
+      data[i] = Math.min(255, Math.max(0, (data[i] - 128) * contrast + 128 + brightness));
+      data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * contrast + 128 + brightness));
+      data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * contrast + 128 + brightness));
     }
     
     ctx.putImageData(imageData, 0, 0);
@@ -218,7 +171,7 @@ export default function UploadPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          facingMode: 'environment', // Use back camera on mobile
+          facingMode: 'environment',
           width: { ideal: 1920 },
           height: { ideal: 1080 }
         }
@@ -254,22 +207,22 @@ export default function UploadPage() {
         enhanceDocument(canvas, ctx);
         
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        setCapturedImage(dataUrl);
         
-        // Convert to file
+        // Convert to file and add to captured photos
         canvas.toBlob((blob) => {
           if (blob) {
-            const file = new File([blob], `document-${Date.now()}.jpg`, { type: 'image/jpeg' });
-            setSelectedFile(file);
-            setPreviewUrl(dataUrl);
+            const timestamp = Date.now();
+            const file = new File([blob], `photo-${timestamp}.jpg`, { type: 'image/jpeg' });
             
-            if (!title) {
-              setTitle(`Document ${new Date().toLocaleDateString()}`);
-            }
+            setCapturedPhotos(prev => [...prev, file]);
+            setPreviewUrls(prev => [...prev, dataUrl]);
+            
+            toast({
+              title: `📸 Photo ${capturedPhotos.length + 1} captured`,
+              description: "Take more photos or save when done",
+            });
           }
         }, 'image/jpeg', 0.9);
-        
-        stopCamera();
       }
     }
   };
@@ -282,338 +235,174 @@ export default function UploadPage() {
     setShowCameraCapture(false);
   };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
+  const removePhoto = (index: number) => {
+    setCapturedPhotos(prev => prev.filter((_, i) => i !== index));
+    
+    // Revoke and remove preview URL
+    URL.revokeObjectURL(previewUrls[index]);
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const savePhotos = () => {
+    if (capturedPhotos.length === 0) return;
     
-    if (!selectedFile) {
-      toast({
-        title: "No file selected",
-        description: "Please select a file to upload.",
-        variant: "destructive",
-      });
-      return;
-    }
+    stopCamera();
+    uploadMutation.mutate(capturedPhotos);
     
-    if (!selectedChildId && children.length > 0) {
-      toast({
-        title: "No child selected",
-        description: "Please select which child this document belongs to.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    uploadMutation.mutate();
+    // Clear captured photos
+    setCapturedPhotos([]);
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    setPreviewUrls([]);
   };
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
 
   if (!user) {
+    navigate('/');
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      {/* Header */}
-      <header className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <h1 className="text-xl font-bold">Upload Document</h1>
-            </div>
-            <Button variant="ghost" onClick={() => navigate('/app')} data-testid="button-close">
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <main className="max-w-2xl mx-auto pt-8">
         <Card>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Camera Capture Modal */}
-              {showCameraCapture && (
-                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-                  <div className="bg-white rounded-xl p-6 w-full max-w-lg">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold">Scan Document</h3>
-                      <Button variant="ghost" size="sm" onClick={stopCamera}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-4">
-                      <video 
-                        ref={videoRef} 
-                        autoPlay 
-                        playsInline
-                        className="w-full h-64 object-cover"
-                      />
-                      <div className="absolute inset-0 border-2 border-dashed border-white/50 m-4 rounded-lg flex items-center justify-center">
-                        <p className="text-white bg-black/50 px-3 py-1 rounded text-sm">
-                          Position document in frame
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 justify-center">
-                      <Button onClick={capturePhoto} data-testid="button-capture">
-                        <Camera className="w-4 h-4 mr-2" />
-                        Capture
-                      </Button>
-                      <Button variant="outline" onClick={stopCamera}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
-                </div>
-              )}
-
-              {/* File Upload Area */}
-              {!selectedFile ? (
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors">
-                  <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Camera className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-card-foreground mb-2">Scan or upload a document</h3>
-                  <p className="text-muted-foreground mb-4">Capture worksheets, flyers, permission slips with enhanced scanning</p>
-                  <div className="flex gap-3 justify-center flex-wrap">
-                    <Button 
-                      type="button" 
-                      onClick={startCameraCapture}
-                      data-testid="button-take-photo"
-                    >
-                      <Camera className="w-4 h-4 mr-2" />
-                      Scan Document
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              📄 Add Document
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Camera Capture Modal */}
+            {showCameraCapture && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-4 max-w-4xl w-full mx-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Take Photos</h3>
+                    <Button variant="ghost" size="sm" onClick={stopCamera}>
+                      <X className="w-4 h-4" />
                     </Button>
-                    
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="file-input"
-                      data-testid="input-file-upload"
-                    />
-                    <label htmlFor="file-input">
-                      <Button type="button" variant="secondary" asChild data-testid="button-choose-file">
-                        <span>
-                          <Upload className="w-4 h-4 mr-2" />
-                          Choose File
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    📱 Documents are automatically enhanced for better text recognition
-                  </p>
-                </div>
-              ) : (
-                /* Preview Area */
-                <div className="bg-muted rounded-xl p-4">
-                  <div className="flex gap-4">
-                    <div className="w-32 h-32 bg-background rounded-lg overflow-hidden flex-shrink-0 relative">
-                      {previewUrl && (
-                        <img 
-                          src={previewUrl} 
-                          alt="Preview" 
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                      <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
-                        ✓ Enhanced
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-card-foreground truncate" data-testid="text-filename">
-                        {selectedFile.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground" data-testid="text-filesize">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                      <p className="text-xs text-green-600 mt-1">
-                        📄 Document automatically enhanced for OCR
-                      </p>
-                      <div className="mt-2 flex gap-2">
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={handleRemoveFile}
-                          className="text-destructive hover:text-destructive"
-                          data-testid="button-remove-file"
-                        >
-                          Remove
-                        </Button>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={startCameraCapture}
-                          data-testid="button-retake"
-                        >
-                          <Camera className="w-3 h-3 mr-1" />
-                          Retake
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Document Details Form */}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Document Title (Optional)</Label>
-                  <Input
-                    id="title"
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Auto-generated if left empty"
-                    data-testid="input-title"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="child">Child (Optional)</Label>
-                    <Select value={selectedChildId} onValueChange={setSelectedChildId}>
-                      <SelectTrigger data-testid="select-child">
-                        <SelectValue placeholder="Select a child (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {children.map((child) => (
-                          <SelectItem key={child.id} value={child.id}>
-                            {child.name} ({child.grade})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                   
-                  <div>
-                    <Label htmlFor="docType">Document Type</Label>
-                    <Select value={docType} onValueChange={setDocType}>
-                      <SelectTrigger data-testid="select-doc-type">
-                        <SelectValue placeholder="Auto-detect" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto-detect">Auto-detect</SelectItem>
-                        <SelectItem value="Homework">Homework</SelectItem>
-                        <SelectItem value="Permission Slip">Permission Slip</SelectItem>
-                        <SelectItem value="Flyer">Flyer</SelectItem>
-                        <SelectItem value="Report Card">Report Card</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full rounded-lg"
+                        style={{ maxHeight: '400px' }}
+                      />
+                      <canvas ref={canvasRef} className="hidden" />
+                    </div>
+                    
+                    {/* Captured photos preview */}
+                    {previewUrls.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {previewUrls.map((url, index) => (
+                          <div key={index} className="relative flex-shrink-0">
+                            <img 
+                              src={url} 
+                              alt={`Captured ${index + 1}`} 
+                              className="w-16 h-16 object-cover rounded border-2 border-green-500"
+                            />
+                            <button
+                              onClick={() => removePhoto(index)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      <Button onClick={capturePhoto} className="flex-1">
+                        <Camera className="w-4 h-4 mr-2" />
+                        Take Photo ({capturedPhotos.length})
+                      </Button>
+                      
+                      {capturedPhotos.length > 0 && (
+                        <Button onClick={savePhotos} variant="default" className="flex-1">
+                          <Check className="w-4 h-4 mr-2" />
+                          Save {capturedPhotos.length} Photo{capturedPhotos.length !== 1 ? 's' : ''}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
+              </div>
+            )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <DateField
-                    label="Due Date"
-                    value={dueDate}
-                    onChange={setDueDate}
-                    placeholder="Optional"
-                  />
-                  <DateField
-                    label="Event Date"
-                    value={eventDate}
-                    onChange={setEventDate}
-                    placeholder="Optional"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="teacher">Teacher</Label>
-                    <Input
-                      id="teacher"
-                      type="text"
-                      value={teacher}
-                      onChange={(e) => setTeacher(e.target.value)}
-                      placeholder="e.g., Ms. Johnson"
-                      data-testid="input-teacher"
-                    />
+            {/* Main Upload Options */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* File Upload Option */}
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-6 text-center">
+                  <div className="mb-4">
+                    <Upload className="w-12 h-12 mx-auto text-blue-600" />
                   </div>
-                  <div>
-                    <Label htmlFor="subject">Subject</Label>
-                    <Input
-                      id="subject"
-                      type="text"
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      placeholder="e.g., Math, Science"
-                      data-testid="input-subject"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Tags</Label>
-                  <TagInput
-                    tags={tags}
-                    onTagsChange={setTags}
-                    placeholder="Add tags and press Enter"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    e.g., homework, math, chapter-5
+                  <h3 className="text-lg font-semibold mb-2">Upload Files</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Select photos from your device
                   </p>
-                </div>
-              </div>
+                  <label htmlFor="file-upload">
+                    <Button asChild className="w-full" disabled={uploadMutation.isPending}>
+                      <span>
+                        {uploadMutation.isPending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Uploading...
+                          </>
+                        ) : (
+                          'Choose Files'
+                        )}
+                      </span>
+                    </Button>
+                  </label>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    data-testid="input-file-upload"
+                  />
+                </CardContent>
+              </Card>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-border">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => navigate('/app')}
-                  data-testid="button-cancel"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  className="flex-1"
-                  disabled={uploadMutation.isPending || !selectedFile}
-                  data-testid="button-upload"
-                >
-                  {uploadMutation.isPending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                      Processing with Azure OCR...
-                    </>
-                  ) : (
-                    <>🤖 AI-Powered Scan & Classify</>
-                  )}
-                </Button>
-              </div>
-            </form>
+              {/* Camera Option */}
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6 text-center">
+                  <div className="mb-4">
+                    <Camera className="w-12 h-12 mx-auto text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Take Photos</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Use your camera to scan documents
+                  </p>
+                  <Button 
+                    onClick={startCameraCapture}
+                    className="w-full"
+                    variant="outline"
+                    data-testid="button-camera"
+                  >
+                    Open Camera
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Info */}
+            <div className="text-center text-sm text-muted-foreground">
+              <p>📋 Documents will be processed automatically with AI</p>
+              <p>🔍 OCR text extraction and classification happens in the background</p>
+              <p>✏️ You can review and edit the details after processing</p>
+            </div>
           </CardContent>
         </Card>
       </main>
