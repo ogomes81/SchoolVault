@@ -20,12 +20,29 @@ export const getCurrentUser = async (): Promise<User | null> => {
   return currentUser;
 };
 
+// Generate a proper UUID v4
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export const signIn = async (email: string, password: string): Promise<User> => {
-  // Simple mock authentication - in real app this would verify against database
-  const user = {
-    id: 'user-' + Math.random().toString(36).substring(7),
-    email: email
-  };
+  // Check if user already exists in localStorage
+  const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
+  let user = existingUsers.find((u: User) => u.email === email);
+  
+  if (!user) {
+    // Create new user with proper UUID
+    user = {
+      id: generateUUID(),
+      email: email
+    };
+    existingUsers.push(user);
+    localStorage.setItem('users', JSON.stringify(existingUsers));
+  }
   
   currentUser = user;
   localStorage.setItem('currentUser', JSON.stringify(user));
@@ -45,7 +62,21 @@ export const signOut = async (): Promise<void> => {
 export const initAuth = (): User | null => {
   const stored = localStorage.getItem('currentUser');
   if (stored) {
-    currentUser = JSON.parse(stored);
+    try {
+      const user = JSON.parse(stored);
+      // Check if user ID is valid UUID format
+      if (user.id && user.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
+        currentUser = user;
+      } else {
+        // Clear invalid user data
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('users');
+        currentUser = null;
+      }
+    } catch (e) {
+      localStorage.removeItem('currentUser');
+      currentUser = null;
+    }
   }
   return currentUser;
 };
