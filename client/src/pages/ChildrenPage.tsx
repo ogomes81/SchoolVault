@@ -14,7 +14,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { insertChildSchema, type Child } from '@shared/schema';
 import { z } from 'zod';
 
-const createChildSchema = insertChildSchema.extend({
+const createChildSchema = insertChildSchema.omit({ userId: true }).extend({
   name: z.string().min(1, 'Name is required'),
   grade: z.string().min(1, 'Grade is required'),
 });
@@ -32,7 +32,7 @@ export default function ChildrenPage() {
   const [formData, setFormData] = useState<CreateChildData>({
     name: '',
     grade: '',
-    birthYear: undefined,
+    birthYear: null,
   });
 
   // Fetch children
@@ -52,7 +52,7 @@ export default function ChildrenPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/children'] });
       setIsAddDialogOpen(false);
-      setFormData({ name: '', grade: '', birthYear: undefined });
+      setFormData({ name: '', grade: '', birthYear: null });
       toast({
         title: "Child added",
         description: "Child has been added successfully.",
@@ -75,7 +75,7 @@ export default function ChildrenPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/children'] });
       setEditingChild(null);
-      setFormData({ name: '', grade: '', birthYear: undefined });
+      setFormData({ name: '', grade: '', birthYear: null });
       toast({
         title: "Child updated",
         description: "Child information has been updated successfully.",
@@ -141,7 +141,7 @@ export default function ChildrenPage() {
     setFormData({
       name: child.name,
       grade: child.grade,
-      birthYear: child.birthYear || undefined,
+      birthYear: child.birthYear,
     });
     setIsAddDialogOpen(true);
   };
@@ -154,7 +154,7 @@ export default function ChildrenPage() {
 
   const resetForm = () => {
     setEditingChild(null);
-    setFormData({ name: '', grade: '', birthYear: undefined });
+    setFormData({ name: '', grade: '', birthYear: null });
   };
 
   if (authLoading) {
@@ -256,7 +256,7 @@ export default function ChildrenPage() {
                       value={formData.birthYear || ''}
                       onChange={(e) => setFormData({ 
                         ...formData, 
-                        birthYear: e.target.value ? parseInt(e.target.value) : undefined 
+                        birthYear: e.target.value ? parseInt(e.target.value) : null 
                       })}
                       placeholder="e.g. 2015"
                       min="2000"
