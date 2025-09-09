@@ -29,9 +29,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Documents routes
   app.get("/api/documents", async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
+      let userId = req.headers['x-user-id'] as string;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Find the actual database user (in case frontend uses localStorage ID)
+      let user = await storage.getUser(userId);
+      if (!user) {
+        // Try to find user by email if they have the wrong ID
+        const userEmail = req.headers['x-user-email'] as string;
+        if (userEmail) {
+          user = await storage.getUserByEmail(userEmail);
+          if (user) {
+            userId = user.id;
+            console.log(`Found user by email for documents, using correct ID: ${userId}`);
+          }
+        }
       }
 
       const documents = await storage.getDocumentsByUser(userId);
@@ -164,9 +178,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Children routes
   app.get("/api/children", async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
+      let userId = req.headers['x-user-id'] as string;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Find the actual database user (in case frontend uses localStorage ID)
+      let user = await storage.getUser(userId);
+      if (!user) {
+        // Try to find user by email if they have the wrong ID
+        const userEmail = req.headers['x-user-email'] as string;
+        if (userEmail) {
+          user = await storage.getUserByEmail(userEmail);
+          if (user) {
+            userId = user.id;
+            console.log(`Found user by email, using correct ID: ${userId}`);
+          }
+        }
       }
 
       const children = await storage.getChildrenByUser(userId);
