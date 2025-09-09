@@ -33,6 +33,7 @@ export const documents = pgTable("documents", {
   docType: text("doc_type").notNull().default("Other"),
   storagePath: text("storage_path").notNull(),
   ocrText: text("ocr_text"),
+  status: text("status").default("processing").notNull(), // processing, processed, failed
   tags: jsonb("tags").$type<string[]>().default([]),
   dueDate: date("due_date"),
   eventDate: date("event_date"),
