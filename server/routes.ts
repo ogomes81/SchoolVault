@@ -179,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/children", async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
+      let userId = req.headers['x-user-id'] as string;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -191,8 +191,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Try to get email from request headers or create a placeholder
         const userEmail = req.headers['x-user-email'] as string || `user-${userId}@example.com`;
         try {
-          user = await storage.createUser({ id: userId, email: userEmail });
-          console.log(`Created user in database: ${user.id}`);
+          // Check if user exists by email first
+          user = await storage.getUserByEmail(userEmail);
+          if (!user) {
+            // Create new user (database will auto-generate ID)
+            user = await storage.createUser({ email: userEmail });
+            console.log(`Created user in database: ${user.id}`);
+          }
+          // Update the userId to match the database user
+          userId = user.id;
+          console.log(`Using user ID: ${userId}`);
         } catch (createError) {
           console.error('Failed to create user:', createError);
           return res.status(500).json({ message: "Failed to ensure user exists" });
