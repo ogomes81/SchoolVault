@@ -210,14 +210,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Combine all tags: AI-generated + semantic + object detection
-      const allTags = [
+      const allTags: string[] = [
         ...enhancedData.suggestedTags,
         ...semanticTags,
-        ...detectedObjects.map(obj => obj.name)
+        ...detectedObjects.map((obj: any) => obj.name)
       ];
       
       // Remove duplicates and limit to reasonable number
-      const uniqueTags = [...new Set(allTags)].slice(0, 10);
+      const uniqueTags = Array.from(new Set(allTags)).slice(0, 10);
 
       const response_data = {
         text: extractedText.trim(),
