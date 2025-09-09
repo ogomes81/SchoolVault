@@ -61,7 +61,7 @@ export default function UploadPage() {
       const documentData: InsertDocument = {
         userId: user.id,
         childId: selectedChildId || null,
-        title: title || selectedFile.name,
+        title: title || `Document ${new Date().toLocaleDateString()}`,
         docType: docType || 'Other',
         storagePath,
         dueDate: dueDate || null,
@@ -74,17 +74,20 @@ export default function UploadPage() {
         shareToken: null,
       };
 
-      const response = await apiRequest('POST', '/api/documents', documentData);
-      const createdDoc = await response.json();
+      const createdDoc = await apiRequest('POST', '/api/documents', documentData);
       
-      // Process OCR
-      try {
-        const ocrResult = await processOCR(storagePath);
-        
-        // Update document with AI-enhanced OCR results
+      // Show immediate success - OCR will process in background
+      toast({
+        title: "✅ Document Saved!",
+        description: "AI processing started in background...",
+      });
+      
+      // Process OCR in background after document is saved
+      processOCR(storagePath).then((ocrResult) => {
+        // Update document with AI-enhanced OCR results in background
         const updateData = {
           ocrText: ocrResult.text,
-          docType: docType && docType !== 'auto-detect' ? docType : ocrResult.classification,
+          docType: docType && docType !== 'auto-detect' ? ocrResult.classification : documentData.docType,
           dueDate: dueDate || ocrResult.extracted.due_date || null,
           eventDate: eventDate || ocrResult.extracted.event_date || null,
           teacher: teacher || ocrResult.extracted.teacher || null,
@@ -92,44 +95,43 @@ export default function UploadPage() {
           tags: tags.length > 0 ? tags : ocrResult.suggestedTags,
         };
 
-        // Show AI insights to user
-        if (ocrResult.confidence && ocrResult.confidence > 0.8) {
-          toast({
-            title: "🤖 AI Analysis Complete",
-            description: `Classified as ${ocrResult.classification} with ${Math.round(ocrResult.confidence * 100)}% confidence`,
-          });
-        } else if (ocrResult.summary) {
-          toast({
-            title: "📄 Document Processed",
-            description: ocrResult.summary,
-          });
-        }
-
-        // Show additional insights if available
-        if (ocrResult.insights && ocrResult.insights.length > 0) {
-          setTimeout(() => {
+        // Update document in background
+        apiRequest('PATCH', `/api/documents/${createdDoc.id}`, updateData).then(() => {
+          // Show AI insights after processing
+          if (ocrResult.confidence && ocrResult.confidence > 0.8) {
             toast({
-              title: "💡 AI Insights",
-              description: ocrResult.insights?.[0] || "Additional information extracted",
+              title: "🤖 AI Analysis Complete",
+              description: `Classified as ${ocrResult.classification} with ${Math.round(ocrResult.confidence * 100)}% confidence`,
             });
-          }, 1000);
-        }
+          } else if (ocrResult.summary) {
+            toast({
+              title: "📄 AI Processing Complete",
+              description: ocrResult.summary,
+            });
+          }
 
-        await apiRequest('PATCH', `/api/documents/${createdDoc.id}`, updateData);
-      } catch (ocrError) {
-        console.warn('OCR processing failed:', ocrError);
-        // Continue without OCR - document is still created
-      }
+          // Show additional insights if available
+          if (ocrResult.insights && ocrResult.insights.length > 0) {
+            setTimeout(() => {
+              toast({
+                title: "💡 AI Insights",
+                description: ocrResult.insights?.[0] || "Additional information extracted",
+              });
+            }, 1000);
+          }
+        }).catch((patchError) => {
+          console.warn('Background OCR update failed:', patchError);
+        });
+      }).catch((ocrError) => {
+        console.warn('Background OCR processing failed:', ocrError);
+      });
       
       return createdDoc;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
-      toast({
-        title: "Document uploaded successfully",
-        description: "Your document has been processed and saved.",
-      });
-      navigate(`/app/doc/${data.id}`);
+      // Navigate to dashboard immediately - background processing continues
+      navigate('/app');
     },
     onError: (error) => {
       console.error('Upload error:', error);
@@ -484,24 +486,23 @@ export default function UploadPage() {
               {/* Document Details Form */}
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="title">Document Title *</Label>
+                  <Label htmlFor="title">Document Title (Optional)</Label>
                   <Input
                     id="title"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter a title for this document"
-                    required
+                    placeholder="Auto-generated if left empty"
                     data-testid="input-title"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="child">Child *</Label>
-                    <Select value={selectedChildId} onValueChange={setSelectedChildId} required>
+                    <Label htmlFor="child">Child (Optional)</Label>
+                    <Select value={selectedChildId} onValueChange={setSelectedChildId}>
                       <SelectTrigger data-testid="select-child">
-                        <SelectValue placeholder="Select a child" />
+                        <SelectValue placeholder="Select a child (optional)" />
                       </SelectTrigger>
                       <SelectContent>
                         {children.map((child) => (
