@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { Plus, Users, Edit, Trash2, User, ArrowLeft } from 'lucide-react';
@@ -205,11 +205,14 @@ export default function ChildrenPage() {
                   Add Child
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xl">
                 <DialogHeader>
-                  <DialogTitle>
+                  <DialogTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {editingChild ? 'Edit Child' : 'Add New Child'}
                   </DialogTitle>
+                  <DialogDescription className="text-slate-600 dark:text-slate-400">
+                    {editingChild ? 'Update your child\'s information.' : 'Add a new child to organize their school documents.'}
+                  </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">

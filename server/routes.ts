@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertDocumentSchema, insertChildSchema } from "@shared/schema";
+import { insertDocumentSchema, insertChildSchema, insertUserSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Mock OCR processing route
@@ -136,6 +136,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // User management route
+  app.post("/api/users", async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.json(existingUser); // Return existing user
+      }
+      
+      const user = await storage.createUser(userData);
+      res.status(201).json(user);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create user" });
     }
   });
 

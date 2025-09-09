@@ -44,6 +44,18 @@ export const signIn = async (email: string, password: string): Promise<User> => 
     localStorage.setItem('users', JSON.stringify(existingUsers));
   }
   
+  // Ensure user exists in database
+  try {
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: user.id, email: user.email })
+    });
+  } catch (error) {
+    console.error('Failed to sync user with database:', error);
+    // Continue anyway - local auth still works
+  }
+  
   currentUser = user;
   localStorage.setItem('currentUser', JSON.stringify(user));
   return user;
