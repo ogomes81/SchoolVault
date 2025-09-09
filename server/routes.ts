@@ -262,9 +262,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/documents/:id", async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
+      let userId = req.headers['x-user-id'] as string;
+      const userEmail = req.headers['x-user-email'] as string;
+      
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Find the actual database user (same logic as other routes)
+      let user = await storage.getUser(userId);
+      
+      if (!user && userEmail) {
+        // Try to find by email if direct ID lookup fails
+        user = await storage.getUserByEmail(userEmail);
+        if (user) {
+          console.log('Found user by email for single document access, using correct ID:', user.id);
+          userId = user.id; // Use the correct database user ID
+        }
       }
 
       const document = await storage.getDocumentById(req.params.id);
@@ -274,6 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if user owns this document
       if (document.userId !== userId) {
+        console.log('Document access denied:', { documentUserId: document.userId, requestUserId: userId });
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -286,9 +301,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/documents/:id", async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
+      let userId = req.headers['x-user-id'] as string;
+      const userEmail = req.headers['x-user-email'] as string;
+      
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Find the actual database user (same logic as other routes)
+      let user = await storage.getUser(userId);
+      
+      if (!user && userEmail) {
+        // Try to find by email if direct ID lookup fails
+        user = await storage.getUserByEmail(userEmail);
+        if (user) {
+          console.log('Found user by email for document update, using correct ID:', user.id);
+          userId = user.id; // Use the correct database user ID
+        }
       }
 
       const document = await storage.getDocumentById(req.params.id);
@@ -311,9 +340,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/documents/:id", async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
+      let userId = req.headers['x-user-id'] as string;
+      const userEmail = req.headers['x-user-email'] as string;
+      
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Find the actual database user (same logic as other routes)
+      let user = await storage.getUser(userId);
+      
+      if (!user && userEmail) {
+        // Try to find by email if direct ID lookup fails
+        user = await storage.getUserByEmail(userEmail);
+        if (user) {
+          console.log('Found user by email for document delete, using correct ID:', user.id);
+          userId = user.id; // Use the correct database user ID
+        }
       }
 
       const document = await storage.getDocumentById(req.params.id);
