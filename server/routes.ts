@@ -5,7 +5,7 @@ import { z } from "zod";
 import { insertDocumentSchema, insertChildSchema, insertUserSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // OCR processing route using Azure Computer Vision
+  // OCR processing route using Azure Computer Vision with AI enhancement
   app.post("/api/ocr", async (req, res) => {
     try {
       const { storagePath } = req.body;
@@ -120,13 +120,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
+      // Enhanced metadata extraction using AI
+      const { enhanceMetadataWithAI } = require('./aiClassifier');
+      let enhancedData = aiResult;
+      
+      try {
+        const enhancement = await enhanceMetadataWithAI(extractedText, aiResult.extracted);
+        
+        // Merge enhanced metadata
+        enhancedData = {
+          ...aiResult,
+          extracted: {
+            ...aiResult.extracted,
+            ...enhancement.enhancedMetadata
+          },
+          additionalInsights: enhancement.additionalInsights
+        };
+        
+        console.log('Enhanced metadata:', enhancement);
+      } catch (enhanceError) {
+        console.warn('Metadata enhancement failed:', enhanceError);
+      }
+
       const response_data = {
         text: extractedText.trim(),
-        classification: aiResult.classification,
-        extracted: aiResult.extracted,
-        suggestedTags: aiResult.suggestedTags,
-        confidence: aiResult.confidence,
-        summary: aiResult.summary
+        classification: enhancedData.classification,
+        extracted: enhancedData.extracted,
+        suggestedTags: enhancedData.suggestedTags,
+        confidence: enhancedData.confidence,
+        summary: enhancedData.summary,
+        insights: enhancedData.additionalInsights || []
       };
       
       res.json(response_data);

@@ -105,6 +105,16 @@ export default function UploadPage() {
           });
         }
 
+        // Show additional insights if available
+        if (ocrResult.insights && ocrResult.insights.length > 0) {
+          setTimeout(() => {
+            toast({
+              title: "💡 AI Insights",
+              description: ocrResult.insights?.[0] || "Additional information extracted",
+            });
+          }, 1000);
+        }
+
         await apiRequest('PATCH', `/api/documents/${createdDoc.id}`, updateData);
       } catch (ocrError) {
         console.warn('OCR processing failed:', ocrError);

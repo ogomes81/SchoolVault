@@ -16,6 +16,7 @@ export interface OCRResponse {
   suggestedTags: string[];
   confidence?: number;
   summary?: string;
+  insights?: string[];
 }
 
 export const processOCR = async (storagePath: string): Promise<OCRResponse> => {
