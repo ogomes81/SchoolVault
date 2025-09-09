@@ -40,7 +40,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const imageUrl = data.publicUrl;
 
-      // Call Azure Computer Vision OCR API
+      // Call Azure Computer Vision API for both OCR and object detection
+      // First, get comprehensive analysis (objects, tags, descriptions)
+      const analysisEndpoint = `${azureEndpoint}/vision/v3.2/analyze`;
+      const analysisResponse = await fetch(analysisEndpoint, {
+        method: 'POST',
+        headers: {
+          'Ocp-Apim-Subscription-Key': azureKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: imageUrl,
+          visualFeatures: ['Objects', 'Tags', 'Description', 'Categories'],
+          details: ['Food'] // Enhanced food detection for items like cakes
+        }),
+      });
+
+      let visionAnalysis = null;
+      if (analysisResponse.ok) {
+        visionAnalysis = await analysisResponse.json();
+        console.log('Azure Vision Analysis:', JSON.stringify(visionAnalysis, null, 2));
+      }
+
+      // Then call OCR API for text extraction
       const ocrEndpoint = `${azureEndpoint}/vision/v3.2/read/analyze`;
       
       const response = await fetch(ocrEndpoint, {
@@ -107,22 +129,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Use AI-powered classification for better accuracy
-      const { classifyDocumentWithAI } = require('./aiClassifier');
+      // Extract objects and semantic information from vision analysis
+      let detectedObjects = [];
+      let semanticTags = [];
+      let imageDescription = '';
+      
+      if (visionAnalysis) {
+        // Extract detected objects
+        if (visionAnalysis.objects) {
+          detectedObjects = visionAnalysis.objects.map(obj => ({
+            name: obj.object,
+            confidence: obj.confidence
+          }));
+        }
+        
+        // Extract tags with confidence scores
+        if (visionAnalysis.tags) {
+          semanticTags = visionAnalysis.tags
+            .filter(tag => tag.confidence > 0.5) // Only high-confidence tags
+            .map(tag => tag.name);
+        }
+        
+        // Extract image description
+        if (visionAnalysis.description && visionAnalysis.description.captions) {
+          imageDescription = visionAnalysis.description.captions[0]?.text || '';
+        }
+        
+        console.log('Detected Objects:', detectedObjects);
+        console.log('Semantic Tags:', semanticTags);
+        console.log('Image Description:', imageDescription);
+      }
+
+      // Use AI-powered classification with enhanced context
+      const { classifyDocumentWithAI, generateSemanticTags } = require('./aiClassifier');
       
       let aiResult;
       try {
-        aiResult = await classifyDocumentWithAI(extractedText);
+        // Enhanced prompt with object detection and image context
+        const enhancedContext = {
+          ocrText: extractedText,
+          detectedObjects,
+          semanticTags,
+          imageDescription
+        };
+        
+        aiResult = await classifyDocumentWithAI(extractedText, enhancedContext);
         console.log('AI Classification Result:', aiResult);
       } catch (aiError) {
         console.warn('AI Classification failed, using fallback:', aiError);
-        // Fallback to basic classification
+        // Fallback to basic classification with object detection tags
         aiResult = {
           classification: 'Other',
           confidence: 0.3,
           extracted: {},
-          suggestedTags: ['document'],
-          summary: 'Basic OCR extraction completed'
+          suggestedTags: [...semanticTags, 'document'].slice(0, 5), // Include detected tags
+          summary: imageDescription || 'Basic OCR extraction completed'
         };
       }
 
