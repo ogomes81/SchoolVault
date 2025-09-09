@@ -207,7 +207,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const documents = await storage.getDocumentsByUser(userId);
+      const query = req.query.search as string;
+      const documents = query 
+        ? await storage.searchDocuments(userId, query)
+        : await storage.getDocumentsByUser(userId);
+      
       res.json(documents);
     } catch (error) {
       console.error("Error fetching documents:", error);

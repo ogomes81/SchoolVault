@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or, sql as sqlOperator } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { 
@@ -17,8 +17,8 @@ import {
 } from "@shared/schema";
 
 // Initialize database connection
-const sql = neon(process.env.DATABASE_URL!);
-const db = drizzle(sql);
+const neonSql = neon(process.env.DATABASE_URL!);
+const db = drizzle(neonSql);
 
 export interface IStorage {
   // User management
@@ -41,6 +41,7 @@ export interface IStorage {
   getDocumentsByUser(userId: string): Promise<(Document & { child?: Child })[]>;
   getDocumentById(id: string): Promise<(Document & { child?: Child }) | undefined>;
   getDocumentByShareToken(shareToken: string): Promise<(Document & { child?: Child }) | undefined>;
+  searchDocuments(userId: string, query: string): Promise<(Document & { child?: Child })[]>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: string, updates: Partial<Document>): Promise<Document>;
   deleteDocument(id: string): Promise<void>;
@@ -241,10 +242,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDocument(document: InsertDocument): Promise<Document> {
-    const result = await db.insert(documents).values({
+    const documentToInsert = {
       ...document,
       tags: document.tags || []
-    }).returning();
+    };
+    const result = await db.insert(documents).values(documentToInsert).returning();
     return result[0];
   }
 
@@ -254,6 +256,69 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Document not found');
     }
     return result[0];
+  }
+
+  async searchDocuments(userId: string, query: string): Promise<(Document & { child?: Child })[]> {
+    if (!query.trim()) {
+      return this.getDocumentsByUser(userId);
+    }
+
+    const searchTerm = `%${query.toLowerCase()}%`;
+    
+    const result = await db
+      .select({
+        id: documents.id,
+        userId: documents.userId,
+        childId: documents.childId,
+        title: documents.title,
+        docType: documents.docType,
+        storagePath: documents.storagePath,
+        ocrText: documents.ocrText,
+        tags: documents.tags,
+        dueDate: documents.dueDate,
+        eventDate: documents.eventDate,
+        teacher: documents.teacher,
+        subject: documents.subject,
+        isShared: documents.isShared,
+        shareToken: documents.shareToken,
+        createdAt: documents.createdAt,
+        child: children,
+      })
+      .from(documents)
+      .leftJoin(children, eq(documents.childId, children.id))
+      .where(
+        and(
+          eq(documents.userId, userId),
+          or(
+            sqlOperator`LOWER(${documents.title}) LIKE ${searchTerm}`,
+            sqlOperator`LOWER(${documents.ocrText}) LIKE ${searchTerm}`,
+            sqlOperator`LOWER(${documents.docType}) LIKE ${searchTerm}`,
+            sqlOperator`LOWER(${documents.teacher}) LIKE ${searchTerm}`,
+            sqlOperator`LOWER(${documents.subject}) LIKE ${searchTerm}`,
+            sqlOperator`EXISTS (SELECT 1 FROM unnest(${documents.tags}) AS tag WHERE LOWER(tag) LIKE ${searchTerm})`
+          )
+        )
+      )
+      .orderBy(desc(documents.createdAt));
+
+    return result.map(row => ({
+      id: row.id,
+      userId: row.userId,
+      childId: row.childId,
+      title: row.title,
+      docType: row.docType,
+      storagePath: row.storagePath,
+      ocrText: row.ocrText,
+      tags: row.tags,
+      dueDate: row.dueDate,
+      eventDate: row.eventDate,
+      teacher: row.teacher,
+      subject: row.subject,
+      isShared: row.isShared,
+      shareToken: row.shareToken,
+      createdAt: row.createdAt,
+      child: row.child || undefined,
+    }));
   }
 
   async deleteDocument(id: string): Promise<void> {
