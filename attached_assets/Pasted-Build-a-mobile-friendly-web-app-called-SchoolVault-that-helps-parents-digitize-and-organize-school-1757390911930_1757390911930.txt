@@ -1,0 +1,149 @@
+Build a mobile-friendly web app called “SchoolVault” that helps parents digitize and organize school papers (worksheets, flyers, permission slips, report cards). Keep it simple: responsive web app only (no PWA/offline). Stack + features below.
+
+# Tech Stack
+- Frontend: React + Vite + TypeScript + TailwindCSS (responsive/mobile-first)
+- Backend: Minimal Node/Express server only for OCR proxy (no heavy backend)
+- Auth/DB/Storage: Supabase (email + Google sign-in, Postgres, Storage)
+- OCR: Google Cloud Vision API (server route calls Vision; client never sees the key)
+
+# Core User Stories (MVP)
+1) Auth: Users sign up/sign in with email or Google via Supabase.
+2) Child Profiles: Add/edit/delete children (name, grade). Select child when uploading docs.
+3) Upload: From phone (camera roll) or desktop. On save: upload image to Supabase Storage, create DB row, then call /api/ocr to extract text and metadata.
+4) Auto-Classification & Extraction:
+   - Classify doc_type: Homework | Flyer | Permission Slip | Report Card | Other
+   - Extract: due_date or event_date, teacher, subject, and suggested tags (array)
+5) Browse & Search:
+   - Dashboard lists recent documents with filters (child, doc_type, date range) and a text search (title, tags, ocr_text).
+6) Document Detail:
+   - Show image preview, title, doc_type, dates, teacher, subject, tags (all editable), and raw OCR text.
+   - Button to generate a simple .ics file if due/event date exists.
+7) Sharing (optional):
+   - Toggle “Share” to create a short token and public read-only page (/s/:token). Toggle off to revoke (clear token).
+
+# Keep It Lean
+- No service worker, no offline queue, no background jobs.
+- Keep server strictly to: auth validation + Vision API call.
+- Use simple regex + heuristics for classification and field extraction (no heavy ML).
+
+# Data Model (Supabase)
+- profiles
+  - id (uuid, pk), user_id (uuid fk -> auth.users), full_name text, created_at timestamptz
+- children
+  - id (uuid, pk), user_id (uuid), name text, grade text, created_at timestamptz
+- documents
+  - id (uuid, pk), user_id (uuid), child_id (uuid)
+  - title text
+  - doc_type text CHECK in ('Homework','Flyer','Permission Slip','Report Card','Other')
+  - storage_path text  -- pointer to Supabase Storage (original image)
+  - ocr_text text
+  - tags text[]        -- e.g., ['math','Ms. Patel','field trip']
+  - due_date date NULL
+  - event_date date NULL
+  - teacher text NULL
+  - subject text NULL
+  - is_shared boolean default false
+  - share_token text unique NULL
+  - created_at timestamptz default now()
+- Indexes: documents(user_id, child_id, doc_type, due_date, created_at), and GIN on tags
+
+# Storage
+- Bucket “documents”; path: documents/{user_id}/{document_id}.jpg
+
+# Server
+- Node/Express in /server with:
+  - POST /api/ocr
+    - Expects Authorization: Bearer <supabase_jwt> header
+    - Body: { storagePath: string } OR { imageUrl: string } (choose one approach)
+    - Validates Supabase session by calling Supabase auth API or using @supabase/supabase-js with the JWT.
+    - Downloads the image from Supabase Storage (using service role key) OR accepts a signed URL from client.
+    - Calls Google Vision API (env: GOOGLE_VISION_API_KEY)
+    - Response: {
+        text: string,
+        classification: 'Homework'|'Flyer'|'Permission Slip'|'Report Card'|'Other',
+        extracted: { due_date?: string(YYYY-MM-DD), event_date?: string, teacher?: string, subject?: string },
+        suggestedTags: string[]
+      }
+
+# Classification & Extraction Heuristics (implement in a shared util)
+- classification:
+  - contains /permission\s*slip/i -> 'Permission Slip'
+  - contains /(report\s*card|grade|GPA)/i -> 'Report Card'
+  - contains /(homework|worksheet|assignment)/i -> 'Homework'
+  - contains /(field trip|PTA|fair|event|flyer)/i -> 'Flyer'
+  - else 'Other'
+- date extraction:
+  - Regex for dates: MM/DD/YYYY, MM/DD/YY, Month DD, YYYY, “Due: …”, “Return by …”
+  - Pick the nearest future date as due_date or event_date based on keywords (due/return -> due_date; event/meet/PTA -> event_date)
+- teacher:
+  - Look for lines with “Teacher:” or titles: /(Ms\.|Mr\.|Mrs\.|Mx\.)\s+[A-Z][a-z]+/
+- subject:
+  - Look for “Subject:” or known subjects (Math, Reading, Writing, Science, Social Studies, Art, Music)
+- suggested tags:
+  - From found subject, teacher last name, school keywords (“PTA”, “Field Trip”), and any high-frequency nouns in top lines
+
+# Frontend Pages / Routes
+- /auth: Sign in/up (Supabase UI or custom form)
+- /app (Dashboard):
+  - Header: child selector (All + per child)
+  - Filters: doc type dropdown, date range, text search
+  - List: recent docs as cards (title, mini preview, tags, due/event date if any)
+  - Primary action: “Upload Document”
+- /app/upload:
+  - File input (accept="image/*"), preview, title, child selector
+  - On Save: upload image -> create doc row -> call /api/ocr -> merge results -> navigate to detail
+- /app/doc/:id:
+  - Image preview, title (editable), chips for tags (editable), selects for doc_type
+  - Date pickers (due/event), teacher, subject textarea, ocr_text (read-only collapsible)
+  - Buttons: Save, Export .ics (if date), Share toggle (create or revoke token)
+- /s/:token:
+  - Public, read-only card with image, title, dates, tags, and a “Download image” button
+
+# UI/UX
+- Tailwind, focus on mobile: stacked layout, large tap targets, fixed bottom action bar on detail page
+- Accessible labels, input hints, simple empty states and skeleton loaders
+
+# Security
+- /api/ocr must check Supabase JWT; deny if invalid
+- Only allow requesting OCR for documents that belong to the current user
+- Public share route uses share_token; revoking clears token in DB
+
+# .ICS Export (simple)
+- If due_date or event_date exists, assemble a minimal VEVENT (all-day):
+  - DTSTART: YYYYMMDD
+  - SUMMARY: document.title
+  - DESCRIPTION: first 160 chars of ocr_text
+- Trigger browser download as schoolvault-event.ics
+
+# Project Structure
+- /src
+  - main.tsx, App.tsx, router
+  - pages/: AuthPage.tsx, DashboardPage.tsx, UploadPage.tsx, DocumentDetailPage.tsx, PublicSharePage.tsx
+  - components/: DocCard.tsx, Filters.tsx, TagInput.tsx, DateField.tsx, ChildSelector.tsx
+  - lib/: supabase.ts, api.ts (fetch helpers), extract.ts (regex helpers), ics.ts
+  - hooks/: useAuthGuard.ts
+  - styles/: index.css (Tailwind)
+- /server
+  - index.ts (Express app, CORS, JSON)
+  - ocr.ts (route + Vision call)
+- supabase/ (SQL seed or migration script for tables)
+- README.md with setup steps
+
+# Env Vars (document in README; configure in Replit Secrets)
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY (server use only)
+- SUPABASE_BUCKET="documents"
+- GOOGLE_VISION_API_KEY
+- PUBLIC_APP_URL (for share links)
+
+# Acceptance Criteria
+- ✅ Sign in/out works; create/list/edit children
+- ✅ Upload image -> Supabase Storage; doc row created
+- ✅ /api/ocr returns text + parsed fields; doc auto-fills type/date/tags/teacher/subject
+- ✅ Dashboard filter + search across title/tags/ocr_text
+- ✅ Document detail edits persist
+- ✅ .ics export works when a date is present
+- ✅ Share toggle generates /s/:token page; revoking hides it
+
+Generate the full codebase with Tailwind configured, basic styling, seed SQL for Supabase tables, and a concise README with step-by-step setup for Supabase keys, Storage bucket, and Google Vision.
