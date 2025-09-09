@@ -190,16 +190,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900">
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-40">
+      <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-primary-foreground" />
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <GraduationCap className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold hidden sm:block">SchoolVault</h1>
+              <h1 className="text-xl font-bold hidden sm:block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">SchoolVault</h1>
             </div>
 
             <div className="flex items-center gap-3">
@@ -221,65 +221,65 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 lg:pb-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-xl text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Documents</p>
-                  <p className="text-2xl font-bold text-card-foreground" data-testid="stat-total-docs">
+                  <p className="text-sm text-blue-100">Total Documents</p>
+                  <p className="text-2xl font-bold text-white" data-testid="stat-total-docs">
                     {stats.totalDocs}
                   </p>
                 </div>
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-primary" />
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-r from-orange-500 to-red-500 border-0 shadow-xl text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Due This Week</p>
-                  <p className="text-2xl font-bold text-accent" data-testid="stat-due-soon">
+                  <p className="text-sm text-orange-100">Due This Week</p>
+                  <p className="text-2xl font-bold text-white" data-testid="stat-due-soon">
                     {stats.dueSoon}
                   </p>
                 </div>
-                <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-accent" />
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-xl text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">This Month</p>
-                  <p className="text-2xl font-bold text-secondary" data-testid="stat-this-month">
+                  <p className="text-sm text-green-100">This Month</p>
+                  <p className="text-2xl font-bold text-white" data-testid="stat-this-month">
                     {stats.thisMonth}
                   </p>
                 </div>
-                <div className="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-secondary" />
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-r from-purple-500 to-pink-500 border-0 shadow-xl text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Shared</p>
-                  <p className="text-2xl font-bold text-card-foreground" data-testid="stat-shared">
+                  <p className="text-sm text-purple-100">Shared</p>
+                  <p className="text-2xl font-bold text-white" data-testid="stat-shared">
                     {stats.shared}
                   </p>
                 </div>
-                <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                  <Share className="w-5 h-5 text-muted-foreground" />
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Share className="w-5 h-5 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -376,26 +376,41 @@ export default function DashboardPage() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="mobile-bottom-nav bg-card border-t border-border lg:hidden fixed bottom-0 left-0 right-0 z-50">
-        <div className="flex justify-around py-2">
-          <Button variant="ghost" className="flex flex-col items-center p-3 text-primary" data-testid="nav-home">
+      <nav className="mobile-bottom-nav bg-white/90 backdrop-blur-lg border-t border-slate-200 lg:hidden fixed bottom-0 left-0 right-0 z-50 shadow-lg">
+        <div className="flex justify-around py-3">
+          <Button 
+            variant="ghost" 
+            className="flex flex-col items-center p-3 text-blue-600 bg-blue-50 rounded-xl" 
+            onClick={() => navigate('/app')}
+            data-testid="nav-home"
+          >
             <Home className="w-5 h-5 mb-1" />
             <span className="text-xs font-medium">Home</span>
           </Button>
           <Button 
             variant="ghost" 
-            className="flex flex-col items-center p-3 text-muted-foreground"
+            className="flex flex-col items-center p-3 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
             onClick={() => navigate('/app/upload')}
             data-testid="nav-upload"
           >
             <Camera className="w-5 h-5 mb-1" />
             <span className="text-xs font-medium">Upload</span>
           </Button>
-          <Button variant="ghost" className="flex flex-col items-center p-3 text-muted-foreground" data-testid="nav-children">
+          <Button 
+            variant="ghost" 
+            className="flex flex-col items-center p-3 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" 
+            onClick={() => toast({ title: "Children Management", description: "This feature is coming soon!" })}
+            data-testid="nav-children"
+          >
             <Users className="w-5 h-5 mb-1" />
             <span className="text-xs font-medium">Children</span>
           </Button>
-          <Button variant="ghost" className="flex flex-col items-center p-3 text-muted-foreground" data-testid="nav-settings">
+          <Button 
+            variant="ghost" 
+            className="flex flex-col items-center p-3 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" 
+            onClick={() => toast({ title: "Settings", description: "Settings panel is coming soon!" })}
+            data-testid="nav-settings"
+          >
             <Settings className="w-5 h-5 mb-1" />
             <span className="text-xs font-medium">Settings</span>
           </Button>
