@@ -74,7 +74,8 @@ export default function UploadPage() {
         shareToken: null,
       };
 
-      const createdDoc = await apiRequest('POST', '/api/documents', documentData);
+      const response = await apiRequest('POST', '/api/documents', documentData);
+      const createdDoc = await response.json();
       
       // Show immediate success - OCR will process in background
       toast({
