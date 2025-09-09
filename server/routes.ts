@@ -179,25 +179,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/children", async (req, res) => {
     try {
       let userId = req.headers['x-user-id'] as string;
+      const userEmail = req.headers['x-user-email'] as string;
+      
+      console.log(`Fetching children - Original user ID: ${userId}, Email: ${userEmail}`);
+      
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       // Find the actual database user (in case frontend uses localStorage ID)
       let user = await storage.getUser(userId);
-      if (!user) {
+      console.log(`Found user by ID: ${!!user}`);
+      
+      if (!user && userEmail) {
         // Try to find user by email if they have the wrong ID
-        const userEmail = req.headers['x-user-email'] as string;
-        if (userEmail) {
-          user = await storage.getUserByEmail(userEmail);
-          if (user) {
-            userId = user.id;
-            console.log(`Found user by email, using correct ID: ${userId}`);
-          }
+        console.log(`Trying to find user by email: ${userEmail}`);
+        user = await storage.getUserByEmail(userEmail);
+        if (user) {
+          userId = user.id;
+          console.log(`Found user by email, using correct ID: ${userId}`);
+        } else {
+          console.log(`User not found by email either`);
         }
       }
 
       const children = await storage.getChildrenByUser(userId);
+      console.log(`Found ${children.length} children for user ${userId}`);
       res.json(children);
     } catch (error) {
       console.error("Error fetching children:", error);
