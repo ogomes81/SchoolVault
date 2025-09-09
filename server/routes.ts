@@ -10,7 +10,8 @@ async function processDocumentInBackground(documentId: string, storagePath: stri
     console.log(`Starting background processing for document ${documentId}`);
     
     // Process OCR in background
-    const { processOCRWithAzure, classifyDocumentWithOpenAI } = require('./aiClassifier');
+    const aiClassifier = await import('./aiClassifier.js');
+    const { processOCRWithAzure, classifyDocumentWithOpenAI } = aiClassifier;
     
     // Step 1: Extract text with Azure OCR
     const ocrText = await processOCRWithAzure(storagePath);

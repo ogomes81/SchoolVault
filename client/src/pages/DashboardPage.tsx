@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,7 +39,7 @@ export default function DashboardPage() {
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedChild, setSelectedChild] = useState('all');
+  const [selectedChild, setSelectedChild] = useState('');
   const [docTypeFilter, setDocTypeFilter] = useState('all');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
@@ -49,6 +49,13 @@ export default function DashboardPage() {
     queryKey: ['/api/children'],
     enabled: !!user,
   });
+
+  // Auto-select first child when children load
+  useEffect(() => {
+    if (children.length > 0 && !selectedChild) {
+      setSelectedChild(children[0].id);
+    }
+  }, [children, selectedChild]);
 
   // Fetch documents
   const { data: documents = [], isLoading: documentsLoading } = useQuery<DocumentWithChild[]>({
@@ -84,8 +91,8 @@ export default function DashboardPage() {
   // Filtered documents
   const filteredDocuments = useMemo(() => {
     return documents.filter(doc => {
-      // Child filter
-      if (selectedChild !== 'all' && doc.childId !== selectedChild) {
+      // Child filter - must match selected child (no 'all' option)
+      if (!selectedChild || doc.childId !== selectedChild) {
         return false;
       }
       
@@ -207,6 +214,7 @@ export default function DashboardPage() {
                 children={children}
                 selectedChildId={selectedChild}
                 onChildChange={setSelectedChild}
+                includeAll={false}
               />
               
               <Button variant="ghost" size="sm" onClick={signOut} data-testid="button-signout">
