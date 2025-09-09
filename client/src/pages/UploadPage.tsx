@@ -495,7 +495,7 @@ export default function UploadPage() {
                         <SelectValue placeholder="Auto-detect" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Auto-detect</SelectItem>
+                        <SelectItem value="auto-detect">Auto-detect</SelectItem>
                         <SelectItem value="Homework">Homework</SelectItem>
                         <SelectItem value="Permission Slip">Permission Slip</SelectItem>
                         <SelectItem value="Flyer">Flyer</SelectItem>
