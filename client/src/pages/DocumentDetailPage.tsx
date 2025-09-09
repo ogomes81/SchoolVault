@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as React from 'react';
 import { useLocation, useParams } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -74,7 +75,7 @@ export default function DocumentDetailPage() {
   });
 
   // Initialize form when document loads
-  useState(() => {
+  React.useEffect(() => {
     if (document) {
       setFormData({
         title: document.title,
@@ -85,7 +86,7 @@ export default function DocumentDetailPage() {
         teacher: document.teacher || '',
         subject: document.subject || '',
         tags: Array.isArray(document.tags) ? document.tags : [],
-        isShared: document.isShared,
+        isShared: document.isShared || false,
       });
     }
   }, [document]);
@@ -199,12 +200,12 @@ export default function DocumentDetailPage() {
     if (!document) return;
     
     const imageUrl = getDocumentUrl(document.storagePath);
-    const link = document.createElement('a');
+    const link = window.document.createElement('a');
     link.href = imageUrl;
     link.download = `${document.title}.jpg`;
-    document.body.appendChild(link);
+    window.document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    window.document.body.removeChild(link);
   };
 
   const handleDelete = () => {
@@ -449,7 +450,7 @@ export default function DocumentDetailPage() {
                     <Label className="text-sm font-medium text-card-foreground mb-2 block">Tags</Label>
                     <div className="flex flex-wrap gap-2">
                       {(document.tags as string[]).map((tag, index) => (
-                        <Badge key={index} variant="outline">{tag}</Badge>
+                        <Badge key={index} variant="outline">{String(tag)}</Badge>
                       ))}
                     </div>
                   </div>
@@ -470,7 +471,7 @@ export default function DocumentDetailPage() {
                     <p className="text-sm text-muted-foreground">Allow others to view this document with a link</p>
                   </div>
                   <Switch 
-                    checked={document.isShared} 
+                    checked={document.isShared || false} 
                     onCheckedChange={handleToggleSharing}
                     data-testid="switch-sharing"
                   />

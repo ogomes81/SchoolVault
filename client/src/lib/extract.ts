@@ -139,5 +139,5 @@ export const generateSuggestedTags = (text: string, classification: string, teac
     tags.push(`${gradeMatch[1]}${gradeMatch[2]}-grade`);
   }
   
-  return [...new Set(tags)]; // Remove duplicates
+  return Array.from(new Set(tags)); // Remove duplicates
 };

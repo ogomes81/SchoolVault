@@ -37,12 +37,12 @@ export default function PublicSharePage() {
     if (!document) return;
     
     const imageUrl = getDocumentUrl(document.storagePath);
-    const link = document.createElement('a');
+    const link = window.document.createElement('a');
     link.href = imageUrl;
     link.download = `${document.title}.jpg`;
-    document.body.appendChild(link);
+    window.document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    window.document.body.removeChild(link);
     
     toast({
       title: "Download started",
@@ -203,7 +203,7 @@ export default function PublicSharePage() {
                 <div className="flex flex-wrap gap-2">
                   {(document.tags as string[]).map((tag, index) => (
                     <Badge key={index} variant="outline" data-testid={`tag-${index}`}>
-                      {tag}
+                      {String(tag)}
                     </Badge>
                   ))}
                 </div>
