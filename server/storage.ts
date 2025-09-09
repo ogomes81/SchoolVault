@@ -242,11 +242,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDocument(document: InsertDocument): Promise<Document> {
-    const documentToInsert = {
-      ...document,
-      tags: document.tags || []
-    };
-    const result = await db.insert(documents).values(documentToInsert).returning();
+    const result = await db.insert(documents).values(document).returning();
     return result[0];
   }
 
