@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -8,7 +8,7 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { Camera, Upload, X, Check } from 'lucide-react';
 import { uploadDocument, getCurrentUser } from '@/lib/supabase';
 import { apiRequest } from '@/lib/queryClient';
-import type { InsertDocument } from '@shared/schema';
+import type { InsertDocument, Child } from '@shared/schema';
 
 export default function UploadPage() {
   const { user, loading: authLoading } = useAuthGuard();
@@ -20,8 +20,22 @@ export default function UploadPage() {
   const [showCameraCapture, setShowCameraCapture] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [selectedChild, setSelectedChild] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Fetch children
+  const { data: children = [] } = useQuery<Child[]>({
+    queryKey: ['/api/children'],
+    enabled: !!user,
+  });
+
+  // Auto-select first child when children load
+  useEffect(() => {
+    if (children.length > 0 && !selectedChild) {
+      setSelectedChild(children[0].id);
+    }
+  }, [children, selectedChild]);
 
   // Upload multiple photos as one document
   const uploadMutation = useMutation({
@@ -46,7 +60,7 @@ export default function UploadPage() {
       // Create document record with first photo as main storage path
       const documentData: InsertDocument = {
         userId: user.id,
-        childId: null, // Will be set later if needed
+        childId: selectedChild || null, // Use selected child
         title: `Document ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
         docType: 'Other',
         storagePath: storagePaths[0], // Main photo

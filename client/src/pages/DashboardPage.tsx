@@ -90,17 +90,9 @@ export default function DashboardPage() {
 
   // Filtered documents
   const filteredDocuments = useMemo(() => {
-    // Debug logging
-    console.log('Filtering documents:', { 
-      totalDocuments: documents.length, 
-      selectedChild, 
-      documentsWithChild: documents.map(d => ({ id: d.id, childId: d.childId, title: d.title }))
-    });
-    
     return documents.filter(doc => {
       // Child filter - must match selected child (no 'all' option)
       if (!selectedChild || doc.childId !== selectedChild) {
-        console.log('Document filtered out:', { docId: doc.id, docChildId: doc.childId, selectedChild });
         return false;
       }
       
