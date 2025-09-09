@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import TagInput from '@/components/TagInput';
 import DateField from '@/components/DateField';
-import { Camera, Upload, X, FileImage, GraduationCap } from 'lucide-react';
+import { Camera, Upload, X, FileImage, GraduationCap, Crop, RotateCw } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { uploadDocument, getCurrentUser } from '@/lib/supabase';
 import { processOCR } from '@/lib/api';
@@ -25,6 +25,10 @@ export default function UploadPage() {
   // Form state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showCameraCapture, setShowCameraCapture] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [title, setTitle] = useState('');
   const [selectedChildId, setSelectedChildId] = useState('');
   const [docType, setDocType] = useState('');
@@ -116,13 +120,7 @@ export default function UploadPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type.startsWith('image/')) {
-        setSelectedFile(file);
-        setPreviewUrl(URL.createObjectURL(file));
-        
-        // Set default title if empty
-        if (!title) {
-          setTitle(file.name.replace(/\.[^/.]+$/, ''));
-        }
+        processImageFile(file);
       } else {
         toast({
           title: "Invalid file type",
@@ -131,6 +129,129 @@ export default function UploadPage() {
         });
       }
     }
+  };
+
+  const processImageFile = async (file: File) => {
+    // Create a canvas to process the image
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Set canvas size to image size
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // Draw image on canvas
+      ctx?.drawImage(img, 0, 0);
+      
+      // Apply document scanning enhancements
+      enhanceDocument(canvas, ctx);
+      
+      // Convert back to blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const enhancedFile = new File([blob], file.name, { type: 'image/jpeg' });
+          setSelectedFile(enhancedFile);
+          setPreviewUrl(URL.createObjectURL(enhancedFile));
+          
+          // Set default title if empty
+          if (!title) {
+            setTitle(file.name.replace(/\.[^/.]+$/, ''));
+          }
+        }
+      }, 'image/jpeg', 0.9);
+    };
+    
+    img.src = URL.createObjectURL(file);
+  };
+
+  const enhanceDocument = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D | null) => {
+    if (!ctx) return;
+    
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Apply contrast and brightness enhancement for better OCR
+    for (let i = 0; i < data.length; i += 4) {
+      // Increase contrast and brightness
+      const contrast = 1.2;
+      const brightness = 10;
+      
+      data[i] = Math.min(255, Math.max(0, (data[i] - 128) * contrast + 128 + brightness));     // Red
+      data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * contrast + 128 + brightness)); // Green
+      data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * contrast + 128 + brightness)); // Blue
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+  };
+
+  const startCameraCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'environment', // Use back camera on mobile
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setShowCameraCapture(true);
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      toast({
+        title: "Camera access failed",
+        description: "Please allow camera access to take photos.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        
+        // Apply document scanning enhancements
+        enhanceDocument(canvas, ctx);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        setCapturedImage(dataUrl);
+        
+        // Convert to file
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `document-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            setSelectedFile(file);
+            setPreviewUrl(dataUrl);
+            
+            if (!title) {
+              setTitle(`Document ${new Date().toLocaleDateString()}`);
+            }
+          }
+        }, 'image/jpeg', 0.9);
+        
+        stopCamera();
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setShowCameraCapture(false);
   };
 
   const handleRemoveFile = () => {
@@ -204,32 +325,62 @@ export default function UploadPage() {
         <Card>
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Camera Capture Modal */}
+              {showCameraCapture && (
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold">Scan Document</h3>
+                      <Button variant="ghost" size="sm" onClick={stopCamera}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-4">
+                      <video 
+                        ref={videoRef} 
+                        autoPlay 
+                        playsInline
+                        className="w-full h-64 object-cover"
+                      />
+                      <div className="absolute inset-0 border-2 border-dashed border-white/50 m-4 rounded-lg flex items-center justify-center">
+                        <p className="text-white bg-black/50 px-3 py-1 rounded text-sm">
+                          Position document in frame
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3 justify-center">
+                      <Button onClick={capturePhoto} data-testid="button-capture">
+                        <Camera className="w-4 h-4 mr-2" />
+                        Capture
+                      </Button>
+                      <Button variant="outline" onClick={stopCamera}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                </div>
+              )}
+
               {/* File Upload Area */}
               {!selectedFile ? (
                 <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors">
                   <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
                     <Camera className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold text-card-foreground mb-2">Choose or take a photo</h3>
-                  <p className="text-muted-foreground mb-4">Upload worksheets, flyers, permission slips, and more</p>
-                  <div className="flex gap-3 justify-center">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="camera-input"
-                      data-testid="input-file-camera"
-                    />
-                    <label htmlFor="camera-input">
-                      <Button type="button" asChild data-testid="button-take-photo">
-                        <span>
-                          <Camera className="w-4 h-4 mr-2" />
-                          Take Photo
-                        </span>
-                      </Button>
-                    </label>
+                  <h3 className="text-lg font-semibold text-card-foreground mb-2">Scan or upload a document</h3>
+                  <p className="text-muted-foreground mb-4">Capture worksheets, flyers, permission slips with enhanced scanning</p>
+                  <div className="flex gap-3 justify-center flex-wrap">
+                    <Button 
+                      type="button" 
+                      onClick={startCameraCapture}
+                      data-testid="button-take-photo"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      Scan Document
+                    </Button>
                     
                     <input
                       type="file"
@@ -248,12 +399,15 @@ export default function UploadPage() {
                       </Button>
                     </label>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    📱 Documents are automatically enhanced for better text recognition
+                  </p>
                 </div>
               ) : (
                 /* Preview Area */
                 <div className="bg-muted rounded-xl p-4">
                   <div className="flex gap-4">
-                    <div className="w-24 h-24 bg-background rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-32 h-32 bg-background rounded-lg overflow-hidden flex-shrink-0 relative">
                       {previewUrl && (
                         <img 
                           src={previewUrl} 
@@ -261,6 +415,9 @@ export default function UploadPage() {
                           className="w-full h-full object-cover"
                         />
                       )}
+                      <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
+                        ✓ Enhanced
+                      </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-card-foreground truncate" data-testid="text-filename">
@@ -269,7 +426,10 @@ export default function UploadPage() {
                       <p className="text-sm text-muted-foreground" data-testid="text-filesize">
                         {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
-                      <div className="mt-2">
+                      <p className="text-xs text-green-600 mt-1">
+                        📄 Document automatically enhanced for OCR
+                      </p>
+                      <div className="mt-2 flex gap-2">
                         <Button 
                           type="button" 
                           variant="ghost" 
@@ -279,6 +439,16 @@ export default function UploadPage() {
                           data-testid="button-remove-file"
                         >
                           Remove
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={startCameraCapture}
+                          data-testid="button-retake"
+                        >
+                          <Camera className="w-3 h-3 mr-1" />
+                          Retake
                         </Button>
                       </div>
                     </div>
@@ -409,10 +579,10 @@ export default function UploadPage() {
                   {uploadMutation.isPending ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                      Processing...
+                      Processing with Azure OCR...
                     </>
                   ) : (
-                    'Upload & Process'
+                    <>🔍 Scan & Extract Text</>
                   )}
                 </Button>
               </div>

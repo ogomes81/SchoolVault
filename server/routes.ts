@@ -5,18 +5,177 @@ import { z } from "zod";
 import { insertDocumentSchema, insertChildSchema, insertUserSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Mock OCR processing route
+  // OCR processing route using Azure Computer Vision
   app.post("/api/ocr", async (req, res) => {
     try {
-      // Mock OCR response - in a real app you'd process the image here
-      const mockResponse = {
-        text: "Sample text extracted from document",
-        classification: "Other" as const,
-        extracted: {},
-        suggestedTags: ["document"]
+      const { storagePath } = req.body;
+      
+      if (!storagePath) {
+        return res.status(400).json({ message: "Storage path is required" });
+      }
+
+      const azureEndpoint = process.env.AZURE_VISION_ENDPOINT;
+      const azureKey = process.env.AZURE_VISION_API_KEY;
+
+      if (!azureEndpoint || !azureKey) {
+        throw new Error("Azure Computer Vision credentials not configured");
+      }
+
+      // Get the file URL from Supabase storage
+      const { createClient } = require('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co',
+        process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key'
+      );
+
+      const { data } = supabase.storage
+        .from('documents')
+        .getPublicUrl(storagePath);
+
+      const imageUrl = data.publicUrl;
+
+      // Call Azure Computer Vision OCR API
+      const ocrEndpoint = `${azureEndpoint}/vision/v3.2/read/analyze`;
+      
+      const response = await fetch(ocrEndpoint, {
+        method: 'POST',
+        headers: {
+          'Ocp-Apim-Subscription-Key': azureKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: imageUrl
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Azure OCR API error: ${response.statusText}`);
+      }
+
+      // Get the operation location for polling
+      const operationLocation = response.headers.get('Operation-Location');
+      if (!operationLocation) {
+        throw new Error('No operation location returned from Azure OCR');
+      }
+
+      // Poll for results (Azure OCR is asynchronous)
+      let ocrResult;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        
+        const resultResponse = await fetch(operationLocation, {
+          headers: {
+            'Ocp-Apim-Subscription-Key': azureKey,
+          },
+        });
+
+        if (!resultResponse.ok) {
+          throw new Error(`Failed to get OCR results: ${resultResponse.statusText}`);
+        }
+
+        ocrResult = await resultResponse.json();
+        
+        if (ocrResult.status === 'succeeded') {
+          break;
+        } else if (ocrResult.status === 'failed') {
+          throw new Error('OCR processing failed');
+        }
+        
+        attempts++;
+      }
+
+      if (ocrResult.status !== 'succeeded') {
+        throw new Error('OCR processing timed out');
+      }
+
+      // Extract text from Azure OCR result
+      let extractedText = '';
+      if (ocrResult.analyzeResult && ocrResult.analyzeResult.readResults) {
+        for (const page of ocrResult.analyzeResult.readResults) {
+          for (const line of page.lines) {
+            extractedText += line.text + ' ';
+          }
+        }
+      }
+
+      // Auto-classify document based on extracted text
+      const text = extractedText.toLowerCase();
+      let classification = 'Other';
+      
+      if (text.includes('homework') || text.includes('assignment') || text.includes('due date')) {
+        classification = 'Homework';
+      } else if (text.includes('permission') || text.includes('field trip') || text.includes('consent')) {
+        classification = 'Permission Slip';
+      } else if (text.includes('report card') || text.includes('grades') || text.includes('semester')) {
+        classification = 'Report Card';
+      } else if (text.includes('event') || text.includes('fundraiser') || text.includes('meeting')) {
+        classification = 'Flyer';
+      }
+
+      // Extract metadata
+      const extracted: any = {};
+      
+      // Extract dates (looking for various date patterns)
+      const datePatterns = [
+        /due\s+(?:date\s+)?(?:is\s+)?(?:on\s+)?(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+        /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g,
+        /(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}/gi
+      ];
+      
+      for (const pattern of datePatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          extracted.due_date = match[1] || match[0];
+          break;
+        }
+      }
+
+      // Extract teacher names
+      const teacherPatterns = [
+        /(?:teacher|instructor|mr\.|mrs\.|ms\.|miss)\s+([a-z]+)/i,
+        /([a-z]+)\s+(?:teacher|class)/i
+      ];
+      
+      for (const pattern of teacherPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          extracted.teacher = match[1];
+          break;
+        }
+      }
+
+      // Extract subjects
+      const subjectKeywords = ['math', 'science', 'english', 'reading', 'social studies', 'history', 'art', 'music', 'pe', 'physical education'];
+      for (const subject of subjectKeywords) {
+        if (text.includes(subject)) {
+          extracted.subject = subject.charAt(0).toUpperCase() + subject.slice(1);
+          break;
+        }
+      }
+
+      // Generate suggested tags
+      const suggestedTags = [];
+      if (classification !== 'Other') {
+        suggestedTags.push(classification.toLowerCase().replace(' ', '-'));
+      }
+      if (extracted.subject) {
+        suggestedTags.push(extracted.subject.toLowerCase());
+      }
+      if (text.includes('urgent') || text.includes('important')) {
+        suggestedTags.push('urgent');
+      }
+
+      const response_data = {
+        text: extractedText.trim(),
+        classification: classification as 'Homework' | 'Flyer' | 'Permission Slip' | 'Report Card' | 'Other',
+        extracted,
+        suggestedTags
       };
       
-      res.json(mockResponse);
+      res.json(response_data);
     } catch (error) {
       console.error("OCR processing error:", error);
       res.status(500).json({ 
