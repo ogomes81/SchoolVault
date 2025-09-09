@@ -198,9 +198,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/documents", async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
+      let userId = req.headers['x-user-id'] as string;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Find the actual database user (same logic as document fetching)
+      let user = await storage.getUser(userId);
+      if (!user) {
+        // Try to find user by email if they have the wrong ID
+        const userEmail = req.headers['x-user-email'] as string;
+        if (userEmail) {
+          user = await storage.getUserByEmail(userEmail);
+          if (user) {
+            userId = user.id;
+            console.log(`Found user by email for document creation, using correct ID: ${userId}`);
+          }
+        }
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const documentData = insertDocumentSchema.parse({
