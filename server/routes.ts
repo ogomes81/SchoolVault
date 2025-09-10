@@ -4,10 +4,57 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { insertDocumentSchema, insertChildSchema, insertUserSchema } from "@shared/schema";
 
-// Background processing function - temporarily disabled to fix display issue
+// Enhanced background processing with Azure Vision and OpenAI
 async function processDocumentInBackground(documentId: string, storagePath: string) {
-  console.log(`Background processing queued for document ${documentId}, but currently disabled for debugging`);
-  // TODO: Re-enable background processing after fixing document display
+  console.log(`Processing document ${documentId} with enhanced OCR...`);
+  
+  try {
+    // Call our enhanced OCR endpoint
+    const ocrResponse = await fetch('http://localhost:5000/api/ocr', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ storagePath }),
+    });
+
+    if (!ocrResponse.ok) {
+      throw new Error(`OCR processing failed: ${ocrResponse.statusText}`);
+    }
+
+    const ocrData = await ocrResponse.json();
+    console.log(`OCR completed for document ${documentId}:`, {
+      textLength: ocrData.text?.length || 0,
+      tags: ocrData.suggestedTags,
+      classification: ocrData.classification,
+      objectsDetected: ocrData.visionData?.detectedObjects?.length || 0
+    });
+
+    // Update document with processed results
+    const updateData = {
+      ocrText: ocrData.text,
+      docType: ocrData.classification,
+      tags: ocrData.suggestedTags,
+      status: 'processed',
+      // Update metadata from AI analysis
+      ...(ocrData.extracted?.due_date && { dueDate: ocrData.extracted.due_date }),
+      ...(ocrData.extracted?.event_date && { eventDate: ocrData.extracted.event_date }),
+      ...(ocrData.extracted?.teacher && { teacher: ocrData.extracted.teacher }),
+      ...(ocrData.extracted?.subject && { subject: ocrData.extracted.subject }),
+    };
+
+    await storage.updateDocument(documentId, updateData);
+    console.log(`Document ${documentId} processing completed successfully`);
+    
+  } catch (error) {
+    console.error(`Background processing failed for document ${documentId}:`, error);
+    
+    // Mark as failed but don't crash
+    await storage.updateDocument(documentId, { 
+      status: 'failed',
+      ocrText: 'Processing failed - please try re-uploading'
+    });
+  }
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -312,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, create documents as 'processed' since background processing is disabled
       const documentDataWithStatus = {
         ...documentData,
-        status: 'processed' // Temporarily set as processed to ensure documents show up
+        status: 'processing' // Set to processing, will be updated by background job
       };
       
       const document = await storage.createDocument(documentDataWithStatus);
@@ -324,8 +371,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: document.status 
       });
       
-      // Background processing temporarily disabled
-      // processDocumentInBackground(document.id, document.storagePath);
+      // Start enhanced background processing with object detection
+      processDocumentInBackground(document.id, document.storagePath);
       
       res.status(201).json(document);
     } catch (error) {
