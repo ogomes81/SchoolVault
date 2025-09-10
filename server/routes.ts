@@ -192,31 +192,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if we have the file in temporary storage first
       if (global.tempFileStorage && global.tempFileStorage.has(storagePath)) {
-        imageBuffer = global.tempFileStorage.get(storagePath);
+        imageBuffer = global.tempFileStorage.get(storagePath)!;
       } else {
         // Try Azure Storage
         const { azureStorage } = await import('./azureStorage.js');
         imageBuffer = await azureStorage.downloadFile(storagePath);
       }
 
-      // Convert buffer to base64 for Azure Vision API
-      const base64Image = imageBuffer.toString('base64');
-      const imageUrl = `data:image/jpeg;base64,${base64Image}`;
-
       // Call Azure Computer Vision API for both OCR and object detection
       // First, get comprehensive analysis (objects, tags, descriptions)
       const analysisEndpoint = `${azureEndpoint}/vision/v3.2/analyze`;
-      const analysisResponse = await fetch(analysisEndpoint, {
+      const analysisParams = new URLSearchParams({
+        'visualFeatures': 'Objects,Tags,Description,Categories',
+        'details': 'Food'
+      });
+      
+      const analysisResponse = await fetch(`${analysisEndpoint}?${analysisParams}`, {
         method: 'POST',
         headers: {
           'Ocp-Apim-Subscription-Key': azureKey,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/octet-stream',
         },
-        body: JSON.stringify({
-          url: imageUrl,
-          visualFeatures: ['Objects', 'Tags', 'Description', 'Categories'],
-          details: ['Food'] // Enhanced food detection for items like cakes
-        }),
+        body: imageBuffer
       });
 
       let visionAnalysis = null;
@@ -232,11 +229,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: 'POST',
         headers: {
           'Ocp-Apim-Subscription-Key': azureKey,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/octet-stream',
         },
-        body: JSON.stringify({
-          url: imageUrl
-        }),
+        body: imageBuffer
       });
 
       if (!response.ok) {

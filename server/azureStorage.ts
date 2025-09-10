@@ -46,7 +46,7 @@ export class AzureStorageService {
     
     try {
       const sasUrl = await blockBlobClient.generateSasUrl({
-        permissions: 'r', // read permission
+        permissions: { read: true }, // read permission
         expiresOn: expiresOn,
       });
       return sasUrl;
