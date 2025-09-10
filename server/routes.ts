@@ -75,7 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get the file URL from Supabase storage
-      const { createClient } = require('@supabase/supabase-js');
+      const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
         process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co',
         process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key'
@@ -208,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use AI-powered classification with enhanced context
-      const { classifyDocumentWithAI, generateSemanticTags } = require('./aiClassifier');
+      const { classifyDocumentWithAI } = await import('./aiClassifier.js');
       
       let aiResult;
       try {
@@ -235,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Enhanced metadata extraction using AI
-      const { enhanceMetadataWithAI } = require('./aiClassifier');
+      const { enhanceMetadataWithAI } = await import('./aiClassifier.js');
       let enhancedData = aiResult;
       
       try {
