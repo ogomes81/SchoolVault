@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { Camera, Upload, X, Check } from 'lucide-react';
+import { Camera, Upload, X, Check, ArrowLeft } from 'lucide-react';
 import { uploadDocument, getCurrentUser } from '@/lib/supabase';
 import { apiRequest } from '@/lib/queryClient';
 import type { InsertDocument, Child } from '@shared/schema';
@@ -283,9 +283,21 @@ export default function UploadPage() {
       <main className="max-w-2xl mx-auto pt-8">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              📄 Add Document
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                📄 Add Document
+              </CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/app')}
+                className="flex items-center gap-2"
+                data-testid="button-back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Camera Capture Modal */}
