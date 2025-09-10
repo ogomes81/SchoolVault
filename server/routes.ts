@@ -230,7 +230,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence: 0.3,
           extracted: {},
           suggestedTags: [...semanticTags, 'document'].slice(0, 5), // Include detected tags
-          summary: imageDescription || 'Basic OCR extraction completed'
+          summary: imageDescription || 'Basic OCR extraction completed',
+          additionalInsights: []
         };
       }
 

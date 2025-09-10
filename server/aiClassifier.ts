@@ -19,6 +19,7 @@ export interface AIClassificationResult {
   };
   suggestedTags: string[];
   summary: string;
+  additionalInsights?: string[];
 }
 
 export async function classifyDocumentWithAI(ocrText: string, enhancedContext?: {
