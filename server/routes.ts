@@ -67,6 +67,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "File and fileName are required" });
       }
 
+      // Check if Azure Storage is properly configured
+      if (!process.env.AZURE_STORAGE_CONNECTION_STRING || !process.env.AZURE_STORAGE_CONNECTION_STRING.trim()) {
+        console.error("Azure Storage not configured, falling back to local storage");
+        // Fallback to local storage approach temporarily
+        res.json({ 
+          storagePath: fileName,
+          url: `/api/file/${encodeURIComponent(fileName)}` 
+        });
+        return;
+      }
+
       // Convert base64 to buffer
       const buffer = Buffer.from(file.split(',')[1], 'base64');
       
@@ -92,8 +103,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/file/:filePath(*)", async (req, res) => {
     try {
       const filePath = decodeURIComponent(req.params.filePath);
-      const { azureStorage } = await import('./azureStorage.js');
       
+      // Check if Azure Storage is properly configured
+      if (!process.env.AZURE_STORAGE_CONNECTION_STRING || !process.env.AZURE_STORAGE_CONNECTION_STRING.trim()) {
+        console.error("Azure Storage not configured, serving placeholder image");
+        // Serve a placeholder image
+        const placeholderSvg = `<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="400" height="300" fill="#F3F4F6"/>
+<path d="M180 150L220 110L260 150L220 190Z" fill="#9CA3AF"/>
+<text x="200" y="220" text-anchor="middle" fill="#6B7280" font-family="Arial" font-size="14">Image not available</text>
+</svg>`;
+        res.setHeader('Content-Type', 'image/svg+xml');
+        return res.send(placeholderSvg);
+      }
+      
+      const { azureStorage } = await import('./azureStorage.js');
       const fileUrl = await azureStorage.getFileUrl(filePath);
       res.redirect(fileUrl);
     } catch (error) {

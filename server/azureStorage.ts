@@ -12,8 +12,17 @@ export class AzureStorageService {
       throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is required');
     }
     
-    this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-    this.containerClient = this.blobServiceClient.getContainerClient(containerName);
+    if (!connectionString.trim()) {
+      throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is empty');
+    }
+    
+    try {
+      this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+      this.containerClient = this.blobServiceClient.getContainerClient(containerName);
+    } catch (error) {
+      console.error('Failed to initialize Azure Storage client:', error);
+      throw new Error(`Failed to initialize Azure Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async uploadFile(buffer: Buffer, fileName: string, contentType: string): Promise<string> {
