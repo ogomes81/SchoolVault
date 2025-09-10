@@ -101,7 +101,7 @@ For urgency, consider words like "urgent", "ASAP", "deadline", "important", "rem
       ],
       response_format: { type: "json_object" },
       temperature: 0.1, // Low temperature for consistent classification
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
     });
 
     const result = response.choices[0].message.content;
@@ -222,7 +222,7 @@ Please analyze and provide enhanced metadata in JSON format:
       ],
       response_format: { type: "json_object" },
       temperature: 0.1,
-      max_tokens: 800,
+      max_completion_tokens: 800,
     });
 
     const result = response.choices[0].message.content;
