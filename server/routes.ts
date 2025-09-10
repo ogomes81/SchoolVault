@@ -4,6 +4,11 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { insertDocumentSchema, insertChildSchema, insertUserSchema } from "@shared/schema";
 
+// Global temporary file storage for fallback
+declare global {
+  var tempFileStorage: Map<string, Buffer> | undefined;
+}
+
 // Enhanced background processing with Azure Vision and OpenAI
 async function processDocumentInBackground(documentId: string, storagePath: string) {
   console.log(`Processing document ${documentId} with enhanced OCR...`);
@@ -68,9 +73,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if Azure Storage is properly configured
-      if (!process.env.AZURE_STORAGE_CONNECTION_STRING || !process.env.AZURE_STORAGE_CONNECTION_STRING.trim()) {
-        console.error("Azure Storage not configured, falling back to local storage");
-        // Fallback to local storage approach temporarily
+      const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+      const isValidConnectionString = connectionString && 
+        connectionString.trim().length > 100 && // Valid connection strings are much longer
+        connectionString.includes('DefaultEndpointsProtocol') &&
+        connectionString.includes('AccountName') &&
+        connectionString.includes('AccountKey');
+
+      if (!isValidConnectionString) {
+        console.log("Azure Storage not properly configured, using fallback storage");
+        
+        // Store base64 data temporarily in memory for OCR processing
+        const buffer = Buffer.from(file.split(',')[1], 'base64');
+        
+        // Create a temporary in-memory storage
+        if (!global.tempFileStorage) {
+          global.tempFileStorage = new Map();
+        }
+        global.tempFileStorage.set(fileName, buffer);
+        
         res.json({ 
           storagePath: fileName,
           url: `/api/file/${encodeURIComponent(fileName)}` 
@@ -104,10 +125,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const filePath = decodeURIComponent(req.params.filePath);
       
+      // Check if we have the file in temporary storage first
+      if (global.tempFileStorage && global.tempFileStorage.has(filePath)) {
+        const buffer = global.tempFileStorage.get(filePath);
+        res.setHeader('Content-Type', 'image/jpeg');
+        return res.send(buffer);
+      }
+
       // Check if Azure Storage is properly configured
-      if (!process.env.AZURE_STORAGE_CONNECTION_STRING || !process.env.AZURE_STORAGE_CONNECTION_STRING.trim()) {
-        console.error("Azure Storage not configured, serving placeholder image");
-        // Serve a placeholder image
+      const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+      const isValidConnectionString = connectionString && 
+        connectionString.trim().length > 100 &&
+        connectionString.includes('DefaultEndpointsProtocol') &&
+        connectionString.includes('AccountName') &&
+        connectionString.includes('AccountKey');
+
+      if (!isValidConnectionString) {
+        console.log("Azure Storage not configured, serving placeholder image");
         const placeholderSvg = `<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
 <rect width="400" height="300" fill="#F3F4F6"/>
 <path d="M180 150L220 110L260 150L220 190Z" fill="#9CA3AF"/>
@@ -142,9 +176,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error("Azure Computer Vision credentials not configured");
       }
 
-      // Get the file URL from Azure Storage
-      const { azureStorage } = await import('./azureStorage.js');
-      const imageUrl = await azureStorage.getFileUrl(storagePath);
+      // Get the file for OCR processing
+      let imageBuffer: Buffer;
+      
+      // Check if we have the file in temporary storage first
+      if (global.tempFileStorage && global.tempFileStorage.has(storagePath)) {
+        imageBuffer = global.tempFileStorage.get(storagePath);
+      } else {
+        // Try Azure Storage
+        const { azureStorage } = await import('./azureStorage.js');
+        imageBuffer = await azureStorage.downloadFile(storagePath);
+      }
+
+      // Convert buffer to base64 for Azure Vision API
+      const base64Image = imageBuffer.toString('base64');
+      const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
       // Call Azure Computer Vision API for both OCR and object detection
       // First, get comprehensive analysis (objects, tags, descriptions)
