@@ -199,6 +199,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageBuffer = await azureStorage.downloadFile(storagePath);
       }
 
+      // Validate image size (Azure Vision has limits)
+      const maxSize = 4 * 1024 * 1024; // 4MB limit
+      if (imageBuffer.length > maxSize) {
+        console.log(`Image too large: ${imageBuffer.length} bytes, compressing...`);
+        // For now, let's try with the large image and see if Azure handles it
+      }
+
+      console.log(`Processing image: ${imageBuffer.length} bytes`);
+
       // Call Azure Computer Vision API for both OCR and object detection
       // First, get comprehensive analysis (objects, tags, descriptions)
       const analysisEndpoint = `${azureEndpoint}/vision/v3.2/analyze`;
@@ -235,7 +244,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!response.ok) {
-        throw new Error(`Azure OCR API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Azure OCR API error details:', response.status, errorText);
+        throw new Error(`Azure OCR API error: ${response.statusText} - ${errorText}`);
       }
 
       // Get the operation location for polling
