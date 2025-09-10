@@ -94,15 +94,35 @@ export const initAuth = (): User | null => {
 };
 
 export const uploadDocument = async (file: File, userId: string, documentId: string, customFileName?: string): Promise<string> => {
-  // Convert file to base64 for storage
+  // Upload to Azure Storage
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      const fileName = customFileName || documentId;
-      const filePath = `documents/${userId}/${fileName}`;
-      localStorage.setItem(filePath, base64);
-      resolve(filePath);
+    reader.onload = async () => {
+      try {
+        const base64 = reader.result as string;
+        const fileName = `documents/${userId}/${customFileName || documentId}`;
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            file: base64,
+            fileName: fileName,
+            contentType: file.type
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+        
+        const result = await response.json();
+        resolve(result.storagePath);
+      } catch (error) {
+        reject(error);
+      }
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
@@ -110,6 +130,7 @@ export const uploadDocument = async (file: File, userId: string, documentId: str
 };
 
 export const getDocumentUrl = (storagePath: string): string => {
-  const base64 = localStorage.getItem(storagePath);
-  return base64 || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xODAgMTUwTDIyMCAxMTBMMjYwIDE1MEwyMjAgMTkwWiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
+  // For Azure Storage, we'll fetch the URL from the server
+  // For now, return a placeholder that will be handled by the img onError
+  return `/api/file/${encodeURIComponent(storagePath)}`;
 };

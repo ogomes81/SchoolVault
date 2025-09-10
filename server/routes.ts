@@ -58,6 +58,50 @@ async function processDocumentInBackground(documentId: string, storagePath: stri
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // File upload route using Azure Storage
+  app.post("/api/upload", async (req, res) => {
+    try {
+      const { file, fileName, contentType } = req.body;
+      
+      if (!file || !fileName) {
+        return res.status(400).json({ message: "File and fileName are required" });
+      }
+
+      // Convert base64 to buffer
+      const buffer = Buffer.from(file.split(',')[1], 'base64');
+      
+      const { azureStorage } = await import('./azureStorage.js');
+      await azureStorage.ensureContainerExists();
+      
+      const fileUrl = await azureStorage.uploadFile(buffer, fileName, contentType || 'image/jpeg');
+      
+      res.json({ 
+        storagePath: fileName,
+        url: fileUrl 
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ 
+        message: "Failed to upload file",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // File serving route for Azure Storage
+  app.get("/api/file/:filePath(*)", async (req, res) => {
+    try {
+      const filePath = decodeURIComponent(req.params.filePath);
+      const { azureStorage } = await import('./azureStorage.js');
+      
+      const fileUrl = await azureStorage.getFileUrl(filePath);
+      res.redirect(fileUrl);
+    } catch (error) {
+      console.error("File serving error:", error);
+      res.status(404).send('File not found');
+    }
+  });
+
   // OCR processing route using Azure Computer Vision with AI enhancement
   app.post("/api/ocr", async (req, res) => {
     try {
@@ -74,18 +118,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error("Azure Computer Vision credentials not configured");
       }
 
-      // Get the file URL from Supabase storage
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co',
-        process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key'
-      );
-
-      const { data } = supabase.storage
-        .from('documents')
-        .getPublicUrl(storagePath);
-
-      const imageUrl = data.publicUrl;
+      // Get the file URL from Azure Storage
+      const { azureStorage } = await import('./azureStorage.js');
+      const imageUrl = await azureStorage.getFileUrl(storagePath);
 
       // Call Azure Computer Vision API for both OCR and object detection
       // First, get comprehensive analysis (objects, tags, descriptions)
