@@ -152,8 +152,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { azureStorage } = await import('./azureStorage.js');
-      const fileUrl = await azureStorage.getFileUrl(filePath);
-      res.redirect(fileUrl);
+      
+      // Get the file content directly and serve it
+      try {
+        const buffer = await azureStorage.downloadFile(filePath);
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.send(buffer);
+      } catch (downloadError) {
+        console.error('Failed to download file:', downloadError);
+        // Try to get a SAS URL as fallback
+        const fileUrl = await azureStorage.getFileUrl(filePath);
+        res.redirect(fileUrl);
+      }
     } catch (error) {
       console.error("File serving error:", error);
       res.status(404).send('File not found');

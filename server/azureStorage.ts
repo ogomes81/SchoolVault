@@ -37,9 +37,24 @@ export class AzureStorageService {
     return blockBlobClient.url;
   }
 
-  async getFileUrl(fileName: string): Promise<string> {
+  async getFileUrl(fileName: string, expiresInMinutes: number = 60): Promise<string> {
     const blockBlobClient = this.containerClient.getBlockBlobClient(fileName);
-    return blockBlobClient.url;
+    
+    // Generate a SAS (Shared Access Signature) URL for private access
+    const expiresOn = new Date();
+    expiresOn.setMinutes(expiresOn.getMinutes() + expiresInMinutes);
+    
+    try {
+      const sasUrl = await blockBlobClient.generateSasUrl({
+        permissions: 'r', // read permission
+        expiresOn: expiresOn,
+      });
+      return sasUrl;
+    } catch (error) {
+      console.error('Failed to generate SAS URL:', error);
+      // Fallback to direct URL (won't work with private containers but better than crashing)
+      return blockBlobClient.url;
+    }
   }
 
   async downloadFile(fileName: string): Promise<Buffer> {
@@ -67,11 +82,12 @@ export class AzureStorageService {
   
   async ensureContainerExists(): Promise<void> {
     try {
-      await this.containerClient.createIfNotExists({
-        access: 'blob', // Public read access for images
-      });
+      // Create container without public access since the storage account doesn't allow it
+      await this.containerClient.createIfNotExists();
+      console.log('Container created/verified successfully');
     } catch (error) {
       console.error('Failed to ensure container exists:', error);
+      throw error;
     }
   }
 }
