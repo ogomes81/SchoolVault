@@ -79,6 +79,9 @@ export const initAuth = (): User | null => {
       // Check if user ID is valid UUID format
       if (user.id && user.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
         currentUser = user;
+        
+        // Clean up old localStorage data since we moved to Azure Storage
+        cleanupOldStorageData();
       } else {
         // Clear invalid user data
         localStorage.removeItem('currentUser');
@@ -91,6 +94,25 @@ export const initAuth = (): User | null => {
     }
   }
   return currentUser;
+};
+
+// Clean up old localStorage document data since we moved to Azure Storage
+const cleanupOldStorageData = () => {
+  try {
+    // Get all localStorage keys
+    const keys = Object.keys(localStorage);
+    
+    // Remove any document file data (keys that start with 'documents/')
+    keys.forEach(key => {
+      if (key.startsWith('documents/')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    console.log('Cleaned up old localStorage document data');
+  } catch (error) {
+    console.warn('Failed to cleanup old storage data:', error);
+  }
 };
 
 export const uploadDocument = async (file: File, userId: string, documentId: string, customFileName?: string): Promise<string> => {
