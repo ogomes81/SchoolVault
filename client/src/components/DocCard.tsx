@@ -75,10 +75,20 @@ export default function DocCard({ document, onDocumentClick, onShare, onExportCa
             target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xODAgMTUwTDIyMCAxMTBMMjYwIDE1MEwyMjAgMTkwWiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
           }}
         />
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 flex flex-col gap-1">
           <Badge className={getDocTypeColor(document.docType)}>
             {document.docType}
           </Badge>
+          {document.status === 'processing' && (
+            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 animate-pulse">
+              Processing...
+            </Badge>
+          )}
+          {document.status === 'failed' && (
+            <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+              Failed
+            </Badge>
+          )}
         </div>
         <div className="absolute top-3 right-3 flex gap-1">
           {document.dueDate && (
