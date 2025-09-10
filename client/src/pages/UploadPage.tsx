@@ -183,6 +183,19 @@ export default function UploadPage() {
 
   const startCameraCapture = async () => {
     try {
+      // Check if we're on iOS and prefer file input with camera capture
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        // On iOS, trigger the file input with camera capture instead
+        const fileInput = document.getElementById('camera-file-input') as HTMLInputElement;
+        if (fileInput) {
+          fileInput.click();
+          return;
+        }
+      }
+
+      // For other devices, use camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
@@ -199,7 +212,7 @@ export default function UploadPage() {
       console.error('Error accessing camera:', error);
       toast({
         title: "Camera access failed",
-        description: "Please allow camera access to take photos.",
+        description: "Please allow camera access to take photos or use the file upload option.",
         variant: "destructive",
       });
     }
@@ -373,7 +386,7 @@ export default function UploadPage() {
                   </div>
                   <h3 className="text-lg font-semibold mb-2">Upload Files</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Select photos from your device
+                    Select photos from your device gallery
                   </p>
                   <label htmlFor="file-upload">
                     <Button asChild className="w-full" disabled={uploadMutation.isPending}>
@@ -392,8 +405,9 @@ export default function UploadPage() {
                   <input
                     id="file-upload"
                     type="file"
-                    accept="image/*"
+                    accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp"
                     multiple
+                    capture="environment"
                     onChange={handleFileSelect}
                     className="hidden"
                     data-testid="input-file-upload"
@@ -419,6 +433,16 @@ export default function UploadPage() {
                   >
                     Open Camera
                   </Button>
+                  {/* Hidden input for iOS camera capture */}
+                  <input
+                    id="camera-file-input"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    data-testid="input-camera-capture"
+                  />
                 </CardContent>
               </Card>
             </div>
