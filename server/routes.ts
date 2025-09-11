@@ -124,9 +124,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/file/:filePath(*)", async (req, res) => {
     try {
       const filePath = decodeURIComponent(req.params.filePath);
+      console.log(`File request: ${filePath}`);
       
       // Check if we have the file in temporary storage first
       if (global.tempFileStorage && global.tempFileStorage.has(filePath)) {
+        console.log(`Serving from temp storage: ${filePath}`);
         const buffer = global.tempFileStorage.get(filePath);
         res.setHeader('Content-Type', 'image/jpeg');
         return res.send(buffer);
@@ -155,19 +157,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get the file content directly and serve it
       try {
+        console.log(`Attempting to download from Azure: ${filePath}`);
         const buffer = await azureStorage.downloadFile(filePath);
         res.setHeader('Content-Type', 'image/jpeg');
         res.setHeader('Cache-Control', 'public, max-age=3600');
+        console.log(`Successfully served file: ${filePath}`);
         return res.send(buffer);
       } catch (downloadError) {
-        console.error('Failed to download file:', downloadError);
+        console.error(`Failed to download file from Azure: ${filePath}`, downloadError);
+        
         // Try to get a SAS URL as fallback
-        const fileUrl = await azureStorage.getFileUrl(filePath);
-        res.redirect(fileUrl);
+        try {
+          const fileUrl = await azureStorage.getFileUrl(filePath);
+          console.log(`Redirecting to SAS URL: ${fileUrl}`);
+          res.redirect(fileUrl);
+        } catch (sasError) {
+          console.error(`Failed to get SAS URL for: ${filePath}`, sasError);
+          
+          // Return placeholder instead of 404
+          const placeholderSvg = `<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="400" height="300" fill="#F3F4F6"/>
+<path d="M180 150L220 110L260 150L220 190Z" fill="#9CA3AF"/>
+<text x="200" y="240" text-anchor="middle" fill="#6B7280" font-family="Arial" font-size="12">File not found: ${filePath.split('/').pop()}</text>
+</svg>`;
+          res.setHeader('Content-Type', 'image/svg+xml');
+          return res.send(placeholderSvg);
+        }
       }
     } catch (error) {
-      console.error("File serving error:", error);
-      res.status(404).send('File not found');
+      console.error(`File serving error for ${req.params.filePath}:`, error);
+      
+      // Return placeholder instead of error
+      const placeholderSvg = `<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="400" height="300" fill="#F3F4F6"/>
+<path d="M180 150L220 110L260 150L220 190Z" fill="#9CA3AF"/>
+<text x="200" y="240" text-anchor="middle" fill="#6B7280" font-family="Arial" font-size="12">Error loading image</text>
+</svg>`;
+      res.setHeader('Content-Type', 'image/svg+xml');
+      return res.send(placeholderSvg);
     }
   });
 
