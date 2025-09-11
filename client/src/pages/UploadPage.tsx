@@ -355,11 +355,27 @@ export default function UploadPage() {
   };
 
   const removePhoto = (index: number) => {
-    setCapturedPhotos(prev => prev.filter((_, i) => i !== index));
-    
-    // Revoke and remove preview URL
-    URL.revokeObjectURL(previewUrls[index]);
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    try {
+      setCapturedPhotos(prev => prev.filter((_, i) => i !== index));
+      
+      // Safely revoke and remove preview URL
+      if (previewUrls[index]) {
+        URL.revokeObjectURL(previewUrls[index]);
+      }
+      setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+      
+      toast({
+        title: "Page removed",
+        description: `Page ${index + 1} deleted successfully`,
+      });
+    } catch (error) {
+      console.error('Error removing photo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove page. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const savePhotos = () => {
@@ -468,23 +484,32 @@ export default function UploadPage() {
                         <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Pages ({previewUrls.length}):
                         </p>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 gap-3">
                           {previewUrls.map((url, index) => (
                             <div key={index} className="relative group">
-                              <img 
-                                src={url} 
-                                alt={`Page ${index + 1}`} 
-                                className="w-full aspect-square object-cover rounded-lg border-2 border-green-400"
-                              />
-                              <div className="absolute top-1 left-1 bg-green-600 text-white text-xs px-1.5 py-0.5 rounded">
-                                {index + 1}
+                              <div className="relative">
+                                <img 
+                                  src={url} 
+                                  alt={`Page ${index + 1}`} 
+                                  className="w-full aspect-square object-cover rounded-lg border-2 border-green-400 pointer-events-none"
+                                />
+                                <div className="absolute top-2 left-2 bg-green-600 text-white text-sm px-2 py-1 rounded font-medium">
+                                  {index + 1}
+                                </div>
+                                {/* Always visible delete button on mobile */}
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removePhoto(index);
+                                  }}
+                                  className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold shadow-lg"
+                                  data-testid={`button-remove-photo-${index}`}
+                                  title="Remove this page"
+                                >
+                                  ×
+                                </button>
                               </div>
-                              <button
-                                onClick={() => removePhoto(index)}
-                                className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                ×
-                              </button>
                             </div>
                           ))}
                         </div>
