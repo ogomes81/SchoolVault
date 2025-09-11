@@ -127,6 +127,39 @@ export default function UploadPage() {
     processImageFiles(imageFiles);
   };
 
+  // New handler for iOS camera fallback - adds to capturedPhotos instead of immediate upload
+  const handleCameraFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select image files only.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    for (const file of imageFiles) {
+      const processedFile = await enhanceImageFile(file);
+      
+      // Add to captured photos array (same as camera capture)
+      setCapturedPhotos(prev => [...prev, processedFile]);
+      setPreviewUrls(prev => [...prev, URL.createObjectURL(processedFile)]);
+    }
+    
+    // Clear the input for next capture
+    event.target.value = '';
+    
+    toast({
+      title: `📸 ${imageFiles.length} page${imageFiles.length !== 1 ? 's' : ''} added!`,
+      description: "Keep adding pages or save your multi-page document.",
+    });
+  };
+
   const processImageFiles = async (files: File[]) => {
     const processedFiles: File[] = [];
     
@@ -188,19 +221,7 @@ export default function UploadPage() {
 
   const startCameraCapture = async () => {
     try {
-      // Check if we're on iOS and prefer file input with camera capture
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      
-      if (isIOS) {
-        // On iOS, trigger the file input with camera capture instead
-        const fileInput = document.getElementById('camera-file-input') as HTMLInputElement;
-        if (fileInput) {
-          fileInput.click();
-          return;
-        }
-      }
-
-      // For other devices, use camera stream
+      // Try to use camera stream first (works on modern iOS Safari too)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
@@ -215,11 +236,24 @@ export default function UploadPage() {
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
-      toast({
-        title: "Camera access failed",
-        description: "Please allow camera access to take photos or use the file upload option.",
-        variant: "destructive",
-      });
+      
+      // Fallback to file input with camera capture (especially for older iOS)
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        // On iOS fallback, still show the camera modal but use file input
+        setShowCameraCapture(true);
+        toast({
+          title: "Camera fallback mode",
+          description: "Use the file input below to capture photos with your camera.",
+        });
+      } else {
+        toast({
+          title: "Camera access failed",
+          description: "Please allow camera access to take photos or use the file upload option.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -438,13 +472,14 @@ export default function UploadPage() {
                   >
                     Open Camera
                   </Button>
-                  {/* Hidden input for iOS camera capture */}
+                  {/* Camera file input for iOS fallback */}
                   <input
                     id="camera-file-input"
                     type="file"
                     accept="image/*"
                     capture="environment"
-                    onChange={handleFileSelect}
+                    multiple
+                    onChange={handleCameraFileSelect}
                     className="hidden"
                     data-testid="input-camera-capture"
                   />
