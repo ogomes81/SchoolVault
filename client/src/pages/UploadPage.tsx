@@ -407,41 +407,35 @@ export default function UploadPage() {
           <CardContent className="space-y-6">
             {/* Camera Capture Modal */}
             {showCameraCapture && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-4 max-w-4xl w-full mx-4">
+              <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">Take Photos</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">📸 Multi-Page Document</h3>
                     <Button variant="ghost" size="sm" onClick={stopCamera}>
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="relative">
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        webkit-playsinline="true"
-                        className="w-full rounded-lg bg-black"
-                        style={{ maxHeight: '400px' }}
-                        onLoadedMetadata={() => {
-                          // Ensure video plays when metadata loads
-                          if (videoRef.current) {
-                            videoRef.current.play().catch(console.log);
-                          }
-                        }}
-                      />
-                      
-                      {/* iOS Fallback - Camera file input */}
-                      <div className="mt-4 text-center">
+                    {/* iPhone Camera Interface */}
+                    {(/iPad|iPhone|iPod/.test(navigator.userAgent)) ? (
+                      <div className="text-center">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
+                          <Camera className="w-12 h-12 mx-auto text-blue-600 dark:text-blue-400 mb-2" />
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            {capturedPhotos.length === 0 
+                              ? "Add photos to create your multi-page document" 
+                              : `${capturedPhotos.length} page${capturedPhotos.length !== 1 ? 's' : ''} added`
+                            }
+                          </p>
+                        </div>
+                        
                         <label
                           htmlFor="ios-camera-input"
-                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700"
+                          className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer text-lg font-medium"
                         >
-                          <Camera className="w-4 h-4 mr-2" />
-                          📱 Use iPhone Camera
+                          <Camera className="w-5 h-5 mr-2" />
+                          Add More Photos
                         </label>
                         <input
                           id="ios-camera-input"
@@ -452,42 +446,61 @@ export default function UploadPage() {
                           className="hidden"
                           onChange={handleCameraFileSelect}
                         />
-                        <p className="text-sm text-gray-600 mt-2">
-                          If camera preview doesn't work, use this button
-                        </p>
                       </div>
-                      <canvas ref={canvasRef} className="hidden" />
-                    </div>
-                    
-                    {/* Captured photos preview */}
-                    {previewUrls.length > 0 && (
-                      <div className="flex gap-2 overflow-x-auto pb-2">
-                        {previewUrls.map((url, index) => (
-                          <div key={index} className="relative flex-shrink-0">
-                            <img 
-                              src={url} 
-                              alt={`Captured ${index + 1}`} 
-                              className="w-16 h-16 object-cover rounded border-2 border-green-500"
-                            />
-                            <button
-                              onClick={() => removePhoto(index)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
+                    ) : (
+                      /* Desktop Camera Interface */
+                      <div className="relative">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full rounded-lg bg-black"
+                          style={{ maxHeight: '400px' }}
+                        />
+                        <canvas ref={canvasRef} className="hidden" />
                       </div>
                     )}
                     
-                    <div className="flex gap-2">
-                      <Button onClick={capturePhoto} className="flex-1">
-                        <Camera className="w-4 h-4 mr-2" />
-                        Add Page ({capturedPhotos.length})
-                      </Button>
+                    {/* Captured photos preview */}
+                    {previewUrls.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Pages ({previewUrls.length}):
+                        </p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {previewUrls.map((url, index) => (
+                            <div key={index} className="relative group">
+                              <img 
+                                src={url} 
+                                alt={`Page ${index + 1}`} 
+                                className="w-full aspect-square object-cover rounded-lg border-2 border-green-400"
+                              />
+                              <div className="absolute top-1 left-1 bg-green-600 text-white text-xs px-1.5 py-0.5 rounded">
+                                {index + 1}
+                              </div>
+                              <button
+                                onClick={() => removePhoto(index)}
+                                className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-3 pt-2">
+                      {!(/iPad|iPhone|iPod/.test(navigator.userAgent)) && (
+                        <Button onClick={capturePhoto} variant="outline" className="flex-1">
+                          <Camera className="w-4 h-4 mr-2" />
+                          Take Photo
+                        </Button>
+                      )}
                       
                       {capturedPhotos.length > 0 && (
-                        <Button onClick={savePhotos} variant="default" className="flex-1">
+                        <Button onClick={savePhotos} className="flex-1 bg-green-600 hover:bg-green-700">
                           <Check className="w-4 h-4 mr-2" />
                           Save {capturedPhotos.length}-Page Document
                         </Button>
