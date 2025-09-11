@@ -48,6 +48,7 @@ export default function DocumentDetailPage() {
   
   const [isOCRExpanded, setIsOCRExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
 
   // Fetch document
   const { data: document, isLoading: documentLoading } = useQuery<DocumentWithChild>({
@@ -240,7 +241,6 @@ export default function DocumentDetailPage() {
   }
 
   // Multi-page support
-  const [currentPage, setCurrentPage] = useState(0);
   const pages = document.pages && Array.isArray(document.pages) && document.pages.length > 0 
     ? document.pages 
     : [document.storagePath];
