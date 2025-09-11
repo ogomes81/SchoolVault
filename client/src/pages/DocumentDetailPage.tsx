@@ -239,7 +239,12 @@ export default function DocumentDetailPage() {
     );
   }
 
-  const imageUrl = getDocumentUrl(document.storagePath);
+  // Multi-page support
+  const [currentPage, setCurrentPage] = useState(0);
+  const pages = document.pages && Array.isArray(document.pages) && document.pages.length > 0 
+    ? document.pages 
+    : [document.storagePath];
+  const imageUrl = getDocumentUrl(pages[currentPage]);
   const shareUrl = document.shareToken ? `${window.location.origin}/s/${document.shareToken}` : '';
 
   return (
@@ -275,26 +280,89 @@ export default function DocumentDetailPage() {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Document Image */}
+          {/* Document Image with Multi-page Support */}
           <div className="space-y-4">
+            {/* Page Navigation */}
+            {pages.length > 1 && (
+              <div className="flex items-center justify-between p-3 bg-card rounded-lg border">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  data-testid="button-prev-page"
+                >
+                  ← Previous
+                </Button>
+                <span className="text-sm font-medium" data-testid="text-page-indicator">
+                  Page {currentPage + 1} of {pages.length}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))}
+                  disabled={currentPage === pages.length - 1}
+                  data-testid="button-next-page"
+                >
+                  Next →
+                </Button>
+              </div>
+            )}
+
             <div className="aspect-video bg-muted rounded-xl overflow-hidden">
               <img 
                 src={imageUrl} 
-                alt={document.title}
+                alt={`${document.title} - Page ${currentPage + 1}`}
                 className="w-full h-full object-cover cursor-pointer"
                 onClick={() => window.open(imageUrl, '_blank')}
                 data-testid="img-document"
               />
             </div>
+
+            {/* Page Thumbnails for Multi-page documents */}
+            {pages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {pages.map((pagePath, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentPage(index)}
+                    className={`flex-shrink-0 w-16 h-12 rounded border-2 overflow-hidden ${
+                      currentPage === index 
+                        ? 'border-primary ring-2 ring-primary/20' 
+                        : 'border-muted hover:border-muted-foreground/50'
+                    }`}
+                    data-testid={`thumbnail-page-${index}`}
+                  >
+                    <img 
+                      src={getDocumentUrl(pagePath)} 
+                      alt={`Page ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleDownloadImage} data-testid="button-download">
                 <Download className="w-4 h-4 mr-2" />
-                Download Original
+                Download Page {currentPage + 1}
               </Button>
               <Button variant="outline" onClick={() => window.open(imageUrl, '_blank')} data-testid="button-view-fullsize">
                 <ZoomIn className="w-4 h-4 mr-2" />
                 View Full Size
               </Button>
+              {pages.length > 1 && (
+                <Button variant="outline" onClick={() => {
+                  // Download all pages as ZIP would be nice, but for now show count
+                  toast({
+                    title: "Multi-page Document",
+                    description: `This document has ${pages.length} pages. Use Previous/Next to view all pages.`,
+                  });
+                }} data-testid="button-multipage-info">
+                  📄 {pages.length} Pages
+                </Button>
+              )}
             </div>
           </div>
 

@@ -31,7 +31,8 @@ export const documents = pgTable("documents", {
   childId: uuid("child_id").references(() => children.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   docType: text("doc_type").notNull().default("Other"),
-  storagePath: text("storage_path").notNull(),
+  storagePath: text("storage_path").notNull(), // Main/first page for backward compatibility
+  pages: jsonb("pages").$type<string[]>().default([]), // Array of all storage paths for multi-page documents
   ocrText: text("ocr_text"),
   status: text("status").default("processing").notNull(), // processing, processed, failed
   tags: jsonb("tags").$type<string[]>().default([]),

@@ -57,13 +57,18 @@ export default function UploadPage() {
         storagePaths.push(storagePath);
       }
 
-      // Create document record with first photo as main storage path
+      // Create document record with all photos as pages
+      const title = files.length > 1 
+        ? `${files.length}-Page Document ${new Date().toLocaleDateString()}`
+        : `Document ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+
       const documentData: InsertDocument = {
         userId: user.id,
-        childId: selectedChild || null, // Use selected child
-        title: `Document ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+        childId: selectedChild || null,
+        title,
         docType: 'Other',
-        storagePath: storagePaths[0], // Main photo
+        storagePath: storagePaths[0], // Main photo for compatibility
+        pages: storagePaths, // All pages including the main one
         status: 'processing',
         ocrText: null,
         tags: [],
@@ -77,17 +82,17 @@ export default function UploadPage() {
 
       const response = await apiRequest('POST', '/api/documents', documentData);
       const createdDoc = await response.json();
-
-      // Store additional photos if any (you might want to modify schema for this)
-      // For now, we'll use the main photo only
       
       return createdDoc;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, files) => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+      const pageCount = files.length;
       toast({
-        title: "✅ Photos Saved!",
-        description: "Your document is being processed in the background...",
+        title: `✅ ${pageCount}-Page Document Saved!`,
+        description: pageCount > 1 
+          ? `All ${pageCount} pages are being processed in the background...`
+          : "Your document is being processed in the background...",
       });
       
       // Navigate to dashboard
@@ -361,13 +366,13 @@ export default function UploadPage() {
                     <div className="flex gap-2">
                       <Button onClick={capturePhoto} className="flex-1">
                         <Camera className="w-4 h-4 mr-2" />
-                        Take Photo ({capturedPhotos.length})
+                        Add Page ({capturedPhotos.length})
                       </Button>
                       
                       {capturedPhotos.length > 0 && (
                         <Button onClick={savePhotos} variant="default" className="flex-1">
                           <Check className="w-4 h-4 mr-2" />
-                          Save {capturedPhotos.length} Photo{capturedPhotos.length !== 1 ? 's' : ''}
+                          Save {capturedPhotos.length}-Page Document
                         </Button>
                       )}
                     </div>
@@ -447,10 +452,23 @@ export default function UploadPage() {
               </Card>
             </div>
 
+            {/* Multi-page info */}
+            {capturedPhotos.length > 0 && (
+              <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  📄 {capturedPhotos.length} page{capturedPhotos.length !== 1 ? 's' : ''} captured
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  All pages will be saved as one multi-page document
+                </p>
+              </div>
+            )}
+
             {/* Info */}
             <div className="text-center text-sm text-muted-foreground">
               <p>📋 Documents will be processed automatically with AI</p>
               <p>🔍 OCR text extraction and classification happens in the background</p>
+              <p>📱 Take multiple photos to create multi-page documents</p>
               <p>✏️ You can review and edit the details after processing</p>
             </div>
           </CardContent>

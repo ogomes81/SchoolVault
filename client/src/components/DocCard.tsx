@@ -91,6 +91,12 @@ export default function DocCard({ document, onDocumentClick, onShare, onExportCa
           )}
         </div>
         <div className="absolute top-3 right-3 flex gap-1">
+          {/* Multi-page indicator */}
+          {document.pages && Array.isArray(document.pages) && document.pages.length > 1 && (
+            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+              📄 {document.pages.length} pages
+            </Badge>
+          )}
           {document.dueDate && (
             <Badge className={getDueDateColor(document.dueDate)}>
               Due {format(new Date(document.dueDate), 'MMM d')}
