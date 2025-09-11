@@ -233,6 +233,13 @@ export default function UploadPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setShowCameraCapture(true);
+        
+        // Ensure video starts playing on iOS Safari
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.log('Video play failed:', playError);
+        }
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -370,9 +377,39 @@ export default function UploadPage() {
                         autoPlay
                         playsInline
                         muted
-                        className="w-full rounded-lg"
+                        webkit-playsinline="true"
+                        className="w-full rounded-lg bg-black"
                         style={{ maxHeight: '400px' }}
+                        onLoadedMetadata={() => {
+                          // Ensure video plays when metadata loads
+                          if (videoRef.current) {
+                            videoRef.current.play().catch(console.log);
+                          }
+                        }}
                       />
+                      
+                      {/* iOS Fallback - Camera file input */}
+                      <div className="mt-4 text-center">
+                        <label
+                          htmlFor="ios-camera-input"
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700"
+                        >
+                          <Camera className="w-4 h-4 mr-2" />
+                          📱 Use iPhone Camera
+                        </label>
+                        <input
+                          id="ios-camera-input"
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          multiple
+                          className="hidden"
+                          onChange={handleCameraFileSelect}
+                        />
+                        <p className="text-sm text-gray-600 mt-2">
+                          If camera preview doesn't work, use this button
+                        </p>
+                      </div>
                       <canvas ref={canvasRef} className="hidden" />
                     </div>
                     
