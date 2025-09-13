@@ -8,6 +8,7 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import DocCard from '@/components/DocCard';
 import Filters from '@/components/Filters';
 import ChildSelector from '@/components/ChildSelector';
+import PhotoGallery from '@/components/PhotoGallery';
 import { 
   GraduationCap, 
   FileText, 
@@ -43,6 +44,10 @@ export default function DashboardPage() {
   const [docTypeFilter, setDocTypeFilter] = useState('all');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
+  
+  // Photo gallery state
+  const [galleryDocument, setGalleryDocument] = useState<DocumentWithChild | null>(null);
+  const [galleryInitialPage, setGalleryInitialPage] = useState(0);
 
   // Fetch children
   const { data: children = [] } = useQuery<Child[]>({
@@ -146,8 +151,23 @@ export default function DashboardPage() {
     };
   }, [documents]);
 
-  const handleDocumentClick = (documentId: string) => {
-    navigate(`/app/doc/${documentId}`);
+  const handleDocumentClick = (documentId: string, useGallery: boolean = false, initialPage: number = 0) => {
+    const document = documents.find(doc => doc.id === documentId);
+    if (!document) return;
+    
+    if (useGallery) {
+      // Open in gallery mode for multi-page documents
+      setGalleryDocument(document);
+      setGalleryInitialPage(initialPage);
+    } else {
+      // Navigate to document detail page
+      navigate(`/app/doc/${documentId}`);
+    }
+  };
+  
+  const handleCloseGallery = () => {
+    setGalleryDocument(null);
+    setGalleryInitialPage(0);
   };
 
   const handleShare = async (documentId: string) => {
@@ -424,6 +444,16 @@ export default function DashboardPage() {
           </Button>
         </div>
       </nav>
+
+      {/* Photo Gallery Modal */}
+      {galleryDocument && (
+        <PhotoGallery
+          document={galleryDocument}
+          isOpen={!!galleryDocument}
+          onClose={handleCloseGallery}
+          initialPage={galleryInitialPage}
+        />
+      )}
     </div>
   );
 }

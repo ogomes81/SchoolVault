@@ -8,7 +8,7 @@ import { getDocumentUrl } from '@/lib/supabase';
 
 interface DocCardProps {
   document: Document & { child?: Child };
-  onDocumentClick: (id: string) => void;
+  onDocumentClick: (id: string, useGallery?: boolean, initialPage?: number) => void;
   onShare: (id: string) => void;
   onExportCalendar: (id: string) => void;
 }
@@ -42,11 +42,28 @@ const getDueDateColor = (dueDate: string | null) => {
 };
 
 export default function DocCard({ document, onDocumentClick, onShare, onExportCalendar }: DocCardProps) {
+  // Parse pages data to check if it's multi-page
+  const raw = (document as any)?.pages;
+  let parsed: string[] = Array.isArray(raw) 
+    ? raw 
+    : (typeof raw === 'string' 
+      ? (() => { try { return JSON.parse(raw); } catch { return []; } })()
+      : []);
+  const pages = parsed.length ? parsed : [document.storagePath];
+  const isMultiPage = pages.length > 1;
+  
   const imageUrl = getDocumentUrl(document.storagePath);
   
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    onDocumentClick(document.id);
+    
+    // For multi-page documents, use gallery mode
+    if (isMultiPage) {
+      onDocumentClick(document.id, true, 0);
+    } else {
+      // Single page documents go to detail page
+      onDocumentClick(document.id, false);
+    }
   };
 
   const handleShare = (e: React.MouseEvent) => {
