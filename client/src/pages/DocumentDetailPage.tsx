@@ -49,6 +49,10 @@ export default function DocumentDetailPage() {
   const [isOCRExpanded, setIsOCRExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  
+  // Touch/swipe state for mobile navigation
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   // Fetch document
   const { data: document, isLoading: documentLoading } = useQuery<DocumentWithChild>({
@@ -233,6 +237,35 @@ export default function DocumentDetailPage() {
     }
   };
 
+  // Swipe gesture handlers for mobile navigation
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && currentPage < pages.length - 1) {
+      // Swipe left = next page
+      setCurrentPage(currentPage + 1);
+    }
+    if (isRightSwipe && currentPage > 0) {
+      // Swipe right = previous page
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   if (authLoading || documentLoading) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
@@ -308,9 +341,14 @@ export default function DocumentDetailPage() {
                 >
                   ← Previous
                 </Button>
-                <span className="text-sm font-medium" data-testid="text-page-indicator">
-                  Page {currentPage + 1} of {pages.length}
-                </span>
+                <div className="text-center">
+                  <span className="text-sm font-medium" data-testid="text-page-indicator">
+                    Page {currentPage + 1} of {pages.length}
+                  </span>
+                  <div className="text-xs text-muted-foreground mt-1 sm:hidden">
+                    Swipe to navigate
+                  </div>
+                </div>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -323,11 +361,16 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-            <div className="aspect-video bg-muted rounded-xl overflow-hidden">
+            <div 
+              className="aspect-video bg-muted rounded-xl overflow-hidden"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <img 
                 src={imageUrl} 
                 alt={`${document.title} - Page ${currentPage + 1}`}
-                className="w-full h-full object-cover cursor-pointer"
+                className="w-full h-full object-cover cursor-pointer select-none"
                 onClick={() => window.open(imageUrl, '_blank')}
                 data-testid="img-document"
               />
