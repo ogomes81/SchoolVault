@@ -200,10 +200,12 @@ export default function DocumentDetailPage() {
   const handleDownloadImage = () => {
     if (!document) return;
     
-    const imageUrl = getDocumentUrl(document.storagePath);
+    const currentPagePath = pages[currentPage];
+    const imageUrl = getDocumentUrl(currentPagePath);
     const link = window.document.createElement('a');
+    const pageText = pages.length > 1 ? `_page${currentPage + 1}` : '';
     link.href = imageUrl;
-    link.download = `${document.title}.jpg`;
+    link.download = `${document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}${pageText}.jpg`;
     window.document.body.appendChild(link);
     link.click();
     window.document.body.removeChild(link);
@@ -240,12 +242,21 @@ export default function DocumentDetailPage() {
     );
   }
 
-  // Multi-page support
-  const pages = document.pages && Array.isArray(document.pages) && document.pages.length > 0 
-    ? document.pages 
-    : [document.storagePath];
+  // Multi-page support - robust parsing for JSON string or array
+  const raw = (document as any).pages;
+  let parsed: string[] = Array.isArray(raw) 
+    ? raw 
+    : (typeof raw === 'string' 
+      ? (() => { try { return JSON.parse(raw); } catch { return []; } })()
+      : []);
+  const pages = parsed.length ? parsed : [document.storagePath];
   const imageUrl = getDocumentUrl(pages[currentPage]);
   const shareUrl = document.shareToken ? `${window.location.origin}/s/${document.shareToken}` : '';
+
+  // Clamp currentPage when pages change
+  React.useEffect(() => {
+    setCurrentPage(prevPage => Math.min(prevPage, pages.length - 1));
+  }, [pages.length]);
 
   return (
     <div className="min-h-screen bg-muted/30">
