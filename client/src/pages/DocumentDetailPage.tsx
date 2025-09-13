@@ -75,6 +75,22 @@ export default function DocumentDetailPage() {
     isShared: false,
   });
 
+  // Multi-page support - robust parsing for JSON string or array
+  const raw = (document as any)?.pages;
+  let parsed: string[] = Array.isArray(raw) 
+    ? raw 
+    : (typeof raw === 'string' 
+      ? (() => { try { return JSON.parse(raw); } catch { return []; } })()
+      : []);
+  const pages = parsed.length ? parsed : [document?.storagePath || ''];
+
+  // Clamp currentPage when pages change
+  React.useEffect(() => {
+    if (pages.length > 0) {
+      setCurrentPage(prevPage => Math.min(prevPage, pages.length - 1));
+    }
+  }, [pages.length]);
+
   // Initialize form when document loads
   React.useEffect(() => {
     if (document) {
@@ -242,21 +258,8 @@ export default function DocumentDetailPage() {
     );
   }
 
-  // Multi-page support - robust parsing for JSON string or array
-  const raw = (document as any).pages;
-  let parsed: string[] = Array.isArray(raw) 
-    ? raw 
-    : (typeof raw === 'string' 
-      ? (() => { try { return JSON.parse(raw); } catch { return []; } })()
-      : []);
-  const pages = parsed.length ? parsed : [document.storagePath];
   const imageUrl = getDocumentUrl(pages[currentPage]);
   const shareUrl = document.shareToken ? `${window.location.origin}/s/${document.shareToken}` : '';
-
-  // Clamp currentPage when pages change
-  React.useEffect(() => {
-    setCurrentPage(prevPage => Math.min(prevPage, pages.length - 1));
-  }, [pages.length]);
 
   return (
     <div className="min-h-screen bg-muted/30">
