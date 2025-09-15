@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { Plus, Users, Edit, Trash2, User, ArrowLeft } from 'lucide-react';
+import { Plus, Users, Edit, Trash2, User } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { insertChildSchema, type Child } from '@shared/schema';
 import { z } from 'zod';
@@ -184,18 +184,10 @@ export default function ChildrenPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/app')}
-                data-testid="button-back"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Users className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Manage Children
               </h1>
             </div>
@@ -205,7 +197,7 @@ export default function ChildrenPage() {
               if (!open) resetForm();
             }}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl transition-shadow" data-testid="button-add-child">
+                <Button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-shadow" data-testid="button-add-child">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Child
                 </Button>
@@ -287,7 +279,7 @@ export default function ChildrenPage() {
                     </Button>
                     <Button
                       type="submit"
-                      className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white"
                       disabled={createChildMutation.isPending || updateChildMutation.isPending}
                       data-testid="button-save-child"
                     >
@@ -323,7 +315,7 @@ export default function ChildrenPage() {
         ) : children.length === 0 ? (
           <Card className="text-center py-12 bg-white/60 backdrop-blur-sm shadow-xl border-0">
             <CardContent>
-              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <User className="w-10 h-10 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">No Children Added</h3>
@@ -332,7 +324,7 @@ export default function ChildrenPage() {
               </p>
               <Button
                 onClick={() => setIsAddDialogOpen(true)}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl transition-shadow"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-shadow"
                 data-testid="button-add-first-child"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -341,17 +333,13 @@ export default function ChildrenPage() {
             </CardContent>
           </Card>
         ) : (
-          <>
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-700 font-medium">Found {children.length} child(ren) - Data loaded successfully!</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {children.map((child) => (
               <Card key={child.id} className="bg-white/60 backdrop-blur-sm shadow-xl border-0 hover:shadow-2xl transition-shadow">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
                         <User className="w-6 h-6 text-white" />
                       </div>
                       <div>
@@ -395,8 +383,7 @@ export default function ChildrenPage() {
                 </CardContent>
               </Card>
             ))}
-            </div>
-          </>
+          </div>
         )}
       </main>
     </div>
