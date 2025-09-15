@@ -169,7 +169,7 @@ export default function DocCard({ document, onDocumentClick, onShare, onExportCa
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {format(new Date(document.createdAt), 'MMM d, yyyy')}
+            {format(new Date(document.createdAt), 'MMM d, yyyy h:mm a')}
           </span>
           <div className="flex gap-2">
             <Button

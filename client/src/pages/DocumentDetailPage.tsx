@@ -442,7 +442,7 @@ export default function DocumentDetailPage() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <CalendarIcon className="w-4 h-4" />
-                  <span data-testid="text-added-date">Added: {format(new Date(document.createdAt), 'MMM d, yyyy')}</span>
+                  <span data-testid="text-added-date">Added: {format(new Date(document.createdAt), 'MMM d, yyyy h:mm a')}</span>
                 </div>
                 <Button 
                   variant="destructive" 
