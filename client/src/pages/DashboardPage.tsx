@@ -45,6 +45,9 @@ export default function DashboardPage() {
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
   
+  // Stat card filter state
+  const [activeStatFilter, setActiveStatFilter] = useState<'total' | 'dueSoon' | 'thisMonth' | 'shared' | null>(null);
+  
   // Photo gallery state
   const [galleryDocument, setGalleryDocument] = useState<DocumentWithChild | null>(null);
   const [galleryInitialPage, setGalleryInitialPage] = useState(0);
@@ -101,6 +104,39 @@ export default function DashboardPage() {
         return false;
       }
       
+      // Stat card filter
+      if (activeStatFilter) {
+        const now = new Date();
+        const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        switch (activeStatFilter) {
+          case 'total':
+            // Show all documents (no additional filter)
+            break;
+          case 'dueSoon':
+            // Show documents due within a week
+            if (!doc.dueDate || 
+                new Date(doc.dueDate) < now || 
+                new Date(doc.dueDate) > oneWeekFromNow) {
+              return false;
+            }
+            break;
+          case 'thisMonth':
+            // Show documents created this month
+            if (new Date(doc.createdAt) < startOfMonth) {
+              return false;
+            }
+            break;
+          case 'shared':
+            // Show only shared documents
+            if (!doc.isShared) {
+              return false;
+            }
+            break;
+        }
+      }
+      
       // Doc type filter
       if (docTypeFilter !== 'all' && doc.docType !== docTypeFilter) {
         return false;
@@ -129,7 +165,7 @@ export default function DashboardPage() {
       
       return true;
     });
-  }, [documents, selectedChild, docTypeFilter, dateFromFilter, dateToFilter, searchQuery]);
+  }, [documents, selectedChild, docTypeFilter, dateFromFilter, dateToFilter, searchQuery, activeStatFilter]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -201,6 +237,25 @@ export default function DashboardPage() {
     });
   };
 
+  const handleStatCardClick = (filterType: 'total' | 'dueSoon' | 'thisMonth' | 'shared') => {
+    // If clicking the same filter, clear it (toggle off)
+    if (activeStatFilter === filterType) {
+      setActiveStatFilter(null);
+      // Clear other filters too when deselecting stat filter
+      setSearchQuery('');
+      setDocTypeFilter('all');
+      setDateFromFilter('');
+      setDateToFilter('');
+    } else {
+      // Set new filter and clear other conflicting filters
+      setActiveStatFilter(filterType);
+      setSearchQuery('');
+      setDocTypeFilter('all');
+      setDateFromFilter('');
+      setDateToFilter('');
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
@@ -249,7 +304,13 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 lg:pb-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-xl text-white">
+          <Card 
+            className={`bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-xl text-white cursor-pointer transition-all duration-200 hover:scale-105 ${
+              activeStatFilter === 'total' ? 'ring-4 ring-white/50 scale-105' : ''
+            }`}
+            onClick={() => handleStatCardClick('total')}
+            data-testid="stat-card-total"
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -265,7 +326,13 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-orange-500 to-red-500 border-0 shadow-xl text-white">
+          <Card 
+            className={`bg-gradient-to-r from-orange-500 to-red-500 border-0 shadow-xl text-white cursor-pointer transition-all duration-200 hover:scale-105 ${
+              activeStatFilter === 'dueSoon' ? 'ring-4 ring-white/50 scale-105' : ''
+            }`}
+            onClick={() => handleStatCardClick('dueSoon')}
+            data-testid="stat-card-due-soon"
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -281,7 +348,13 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-xl text-white">
+          <Card 
+            className={`bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-xl text-white cursor-pointer transition-all duration-200 hover:scale-105 ${
+              activeStatFilter === 'thisMonth' ? 'ring-4 ring-white/50 scale-105' : ''
+            }`}
+            onClick={() => handleStatCardClick('thisMonth')}
+            data-testid="stat-card-this-month"
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -297,7 +370,13 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-purple-500 to-pink-500 border-0 shadow-xl text-white">
+          <Card 
+            className={`bg-gradient-to-r from-purple-500 to-pink-500 border-0 shadow-xl text-white cursor-pointer transition-all duration-200 hover:scale-105 ${
+              activeStatFilter === 'shared' ? 'ring-4 ring-white/50 scale-105' : ''
+            }`}
+            onClick={() => handleStatCardClick('shared')}
+            data-testid="stat-card-shared"
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
