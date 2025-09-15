@@ -447,10 +447,6 @@ export default function DocumentDetailPage() {
 
             {/* Document Info */}
             <div className="space-y-3">
-              <div className="flex items-center gap-3 text-sm">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span><span className="font-medium">Student:</span> {document.child?.name || 'Unknown'}</span>
-              </div>
               {document.subject && (
                 <div className="flex items-center gap-3 text-sm">
                   <BookOpen className="w-4 h-4 text-muted-foreground" />
@@ -463,7 +459,7 @@ export default function DocumentDetailPage() {
                   <span><span className="font-medium">Teacher:</span> {document.teacher}</span>
                 </div>
               )}
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center justify-center gap-3 text-sm">
                 <CalendarIcon className="w-4 h-4 text-muted-foreground" />
                 <span><span className="font-medium">Added:</span> {format(new Date(document.createdAt), 'MMM d, yyyy')}</span>
               </div>
