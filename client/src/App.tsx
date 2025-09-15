@@ -13,6 +13,7 @@ import PublicSharePage from "@/pages/PublicSharePage";
 import ChildrenPage from "@/pages/ChildrenPage";
 import NotFound from "@/pages/not-found";
 import AppLayout from "@/components/AppLayout";
+import { ChildProvider } from "@/contexts/ChildContext";
 
 function Router() {
   const [initialized, setInitialized] = useState(false);
@@ -39,10 +40,10 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <Route path="/s/:token" component={PublicSharePage} />
-      <Route path="/app" component={() => <AppLayout><DashboardPage /></AppLayout>} />
-      <Route path="/app/upload" component={() => <AppLayout><UploadPage /></AppLayout>} />
-      <Route path="/app/children" component={() => <AppLayout><ChildrenPage /></AppLayout>} />
-      <Route path="/app/doc/:id" component={() => <AppLayout><DocumentDetailPage /></AppLayout>} />
+      <Route path="/app" component={() => <ChildProvider><AppLayout><DashboardPage /></AppLayout></ChildProvider>} />
+      <Route path="/app/upload" component={() => <ChildProvider><AppLayout><UploadPage /></AppLayout></ChildProvider>} />
+      <Route path="/app/children" component={() => <ChildProvider><AppLayout><ChildrenPage /></AppLayout></ChildProvider>} />
+      <Route path="/app/doc/:id" component={() => <ChildProvider><AppLayout><DocumentDetailPage /></AppLayout></ChildProvider>} />
       <Route path="/">
         {() => {
           // Redirect to dashboard if we have a session, otherwise to auth

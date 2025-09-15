@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Home, Camera, Users, Settings } from "lucide-react";
+import { Home, Camera, Users, Settings, GraduationCap, LogOut } from "lucide-react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useChild } from "@/contexts/ChildContext";
+import ChildSelector from "@/components/ChildSelector";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -10,6 +13,8 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const { toast } = useToast();
   const [location, navigate] = useLocation();
+  const { signOut } = useAuthGuard();
+  const { children: childrenData, selectedChild, setSelectedChild } = useChild();
 
   // Determine which nav item is active based on current path
   const getNavItemClass = (path: string) => {
@@ -20,7 +25,39 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-xl font-bold hidden sm:block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">SchoolVault</h1>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={signOut} data-testid="button-signout">
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Child Selector Below Header */}
+      <div className="bg-white/50 border-b border-slate-100 px-4 sm:px-6 lg:px-8 py-3">
+        <div className="max-w-7xl mx-auto">
+          <ChildSelector
+            children={childrenData}
+            selectedChildId={selectedChild}
+            onChildChange={setSelectedChild}
+            includeAll={false}
+          />
+        </div>
+      </div>
+
       {/* Main content */}
       <div className="pb-20 lg:pb-0">
         {children}

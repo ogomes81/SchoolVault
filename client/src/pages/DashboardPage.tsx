@@ -5,20 +5,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { useChild } from '@/contexts/ChildContext';
 import DocCard from '@/components/DocCard';
 import Filters from '@/components/Filters';
-import ChildSelector from '@/components/ChildSelector';
 import PhotoGallery from '@/components/PhotoGallery';
 import { 
-  GraduationCap, 
   FileText, 
   Clock, 
   Calendar, 
   Share, 
   User, 
   Camera,
-  Grid3X3,
-  LogOut
+  Grid3X3
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
@@ -30,14 +28,14 @@ interface DocumentWithChild extends Document {
 }
 
 export default function DashboardPage() {
-  const { user, loading: authLoading, signOut } = useAuthGuard();
+  const { user, loading: authLoading } = useAuthGuard();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { children, selectedChild, setSelectedChild } = useChild();
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedChild, setSelectedChild] = useState('');
   const [docTypeFilter, setDocTypeFilter] = useState('all');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
@@ -48,12 +46,6 @@ export default function DashboardPage() {
   // Photo gallery state
   const [galleryDocument, setGalleryDocument] = useState<DocumentWithChild | null>(null);
   const [galleryInitialPage, setGalleryInitialPage] = useState(0);
-
-  // Fetch children
-  const { data: children = [] } = useQuery<Child[]>({
-    queryKey: ['/api/children'],
-    enabled: !!user,
-  });
 
   // Auto-select first child when children load
   useEffect(() => {
@@ -269,36 +261,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-xl font-bold hidden sm:block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">SchoolVault</h1>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <ChildSelector
-                children={children}
-                selectedChildId={selectedChild}
-                onChildChange={setSelectedChild}
-                includeAll={false}
-              />
-              
-              <Button variant="ghost" size="sm" onClick={signOut} data-testid="button-signout">
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div>
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 lg:pb-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card 
