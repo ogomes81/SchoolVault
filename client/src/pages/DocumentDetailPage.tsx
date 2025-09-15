@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
@@ -16,15 +15,12 @@ import TagInput from '@/components/TagInput';
 import DateField from '@/components/DateField';
 import { 
   ArrowLeft, 
-  Share, 
   Calendar, 
   Download, 
   Trash2, 
   ChevronRight,
-  Copy,
   ZoomIn,
   GraduationCap,
-  User,
   BookOpen,
   Calendar as CalendarIcon,
   Presentation
@@ -32,7 +28,7 @@ import {
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { getDocumentUrl } from '@/lib/supabase';
-import { generateShareToken, downloadICS, generateICS } from '@/lib/api';
+import { downloadICS, generateICS } from '@/lib/api';
 import type { Document, Child } from '@shared/schema';
 
 interface DocumentWithChild extends Document {
@@ -76,7 +72,6 @@ export default function DocumentDetailPage() {
     teacher: '',
     subject: '',
     tags: [] as string[],
-    isShared: false,
   });
 
   // Multi-page support - robust parsing for JSON string or array
@@ -107,7 +102,6 @@ export default function DocumentDetailPage() {
         teacher: document.teacher || '',
         subject: document.subject || '',
         tags: Array.isArray(document.tags) ? document.tags : [],
-        isShared: document.isShared || false,
       });
     }
   }, [document]);
@@ -173,17 +167,6 @@ export default function DocumentDetailPage() {
     updateMutation.mutate(updates);
   };
 
-  const handleToggleSharing = () => {
-    const newIsShared = !formData.isShared;
-    const shareToken = newIsShared ? generateShareToken() : null;
-    
-    updateMutation.mutate({
-      isShared: newIsShared,
-      shareToken,
-    });
-    
-    setFormData(prev => ({ ...prev, isShared: newIsShared }));
-  };
 
   const handleExportCalendar = () => {
     if (!document) return;
@@ -205,17 +188,6 @@ export default function DocumentDetailPage() {
     });
   };
 
-  const handleCopyShareLink = () => {
-    if (!document?.shareToken) return;
-    
-    const shareUrl = `${window.location.origin}/s/${document.shareToken}`;
-    navigator.clipboard.writeText(shareUrl);
-    
-    toast({
-      title: "Link copied",
-      description: "Share link has been copied to clipboard.",
-    });
-  };
 
   const handleDownloadImage = () => {
     if (!document) return;
@@ -292,7 +264,6 @@ export default function DocumentDetailPage() {
   }
 
   const imageUrl = getDocumentUrl(pages[currentPage]);
-  const shareUrl = document.shareToken ? `${window.location.origin}/s/${document.shareToken}` : '';
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -311,9 +282,6 @@ export default function DocumentDetailPage() {
             </div>
             
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={handleToggleSharing} data-testid="button-toggle-share">
-                <Share className="w-4 h-4" />
-              </Button>
               {(document.dueDate || document.eventDate) && (
                 <Button variant="ghost" size="sm" onClick={handleExportCalendar} data-testid="button-export-calendar">
                   <Calendar className="w-4 h-4" />
@@ -362,7 +330,7 @@ export default function DocumentDetailPage() {
             )}
 
             <div 
-              className="aspect-video bg-muted rounded-xl overflow-hidden"
+              className="h-96 sm:h-[500px] lg:h-[600px] bg-muted rounded-xl overflow-hidden"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -370,7 +338,7 @@ export default function DocumentDetailPage() {
               <img 
                 src={imageUrl} 
                 alt={`${document.title} - Page ${currentPage + 1}`}
-                className="w-full h-full object-cover cursor-pointer select-none"
+                className="w-full h-full object-contain cursor-pointer select-none"
                 onClick={() => window.open(imageUrl, '_blank')}
                 data-testid="img-document"
               />
