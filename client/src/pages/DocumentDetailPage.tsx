@@ -408,6 +408,24 @@ export default function DocumentDetailPage() {
                 </Button>
               </div>
             </div>
+            
+            {/* Document Type Dropdown */}
+            <div className="mt-4">
+              <Select value={document.docType} onValueChange={(value) => {
+                updateMutation.mutate({ docType: value });
+              }}>
+                <SelectTrigger className="w-full" data-testid="select-document-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Homework">Homework</SelectItem>
+                  <SelectItem value="Permission Slip">Permission Slip</SelectItem>
+                  <SelectItem value="Flyer">Flyer</SelectItem>
+                  <SelectItem value="Report Card">Report Card</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Document Metadata */}
