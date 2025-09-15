@@ -37,7 +37,57 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <h1 className="text-xl font-bold hidden sm:block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">SchoolVault</h1>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-6">
+              {/* Desktop Navigation */}
+              <nav className="hidden lg:flex items-center gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className={location === '/app' || location === '/' 
+                    ? "text-blue-600 bg-blue-50" 
+                    : "text-slate-600 hover:text-blue-600 hover:bg-blue-50"}
+                  onClick={() => navigate('/app')}
+                  data-testid="nav-desktop-home"
+                >
+                  <Home className="w-4 h-4 mr-2" />
+                  Home
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className={location === '/app/upload' 
+                    ? "text-blue-600 bg-blue-50" 
+                    : "text-slate-600 hover:text-blue-600 hover:bg-blue-50"}
+                  onClick={() => navigate('/app/upload')}
+                  data-testid="nav-desktop-upload"
+                >
+                  <Camera className="w-4 h-4 mr-2" />
+                  Upload
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className={location === '/app/children' 
+                    ? "text-blue-600 bg-blue-50" 
+                    : "text-slate-600 hover:text-blue-600 hover:bg-blue-50"}
+                  onClick={() => navigate('/app/children')}
+                  data-testid="nav-desktop-children"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Children
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-slate-600 hover:text-blue-600 hover:bg-blue-50"
+                  onClick={() => toast({ title: "Settings", description: "Settings panel is coming soon!" })}
+                  data-testid="nav-desktop-settings"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+              </nav>
+
               <Button variant="ghost" size="sm" onClick={signOut} data-testid="button-signout">
                 <LogOut className="w-4 h-4" />
               </Button>
