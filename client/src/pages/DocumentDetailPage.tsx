@@ -45,6 +45,7 @@ export default function DocumentDetailPage() {
   const [isOCRExpanded, setIsOCRExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(1);
   
   // Touch/swipe state for mobile navigation
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -89,6 +90,11 @@ export default function DocumentDetailPage() {
       setCurrentPage(prevPage => Math.min(prevPage, pages.length - 1));
     }
   }, [pages.length]);
+
+  // Reset zoom when page changes
+  React.useEffect(() => {
+    setZoomLevel(1);
+  }, [currentPage]);
 
   // Initialize form when document loads
   React.useEffect(() => {
@@ -293,10 +299,10 @@ export default function DocumentDetailPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Document Image with Multi-page Support */}
-          <div className="space-y-4">
+          <div className="lg:col-span-2 space-y-4">
             {/* Page Navigation */}
             {pages.length > 1 && (
               <div className="flex items-center justify-between p-3 bg-card rounded-lg border">
@@ -330,7 +336,7 @@ export default function DocumentDetailPage() {
             )}
 
             <div 
-              className="h-96 sm:h-[500px] lg:h-[600px] bg-muted rounded-xl overflow-hidden"
+              className="h-[70vh] sm:h-[75vh] lg:h-[80vh] bg-muted rounded-xl overflow-hidden relative"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -338,10 +344,27 @@ export default function DocumentDetailPage() {
               <img 
                 src={imageUrl} 
                 alt={`${document.title} - Page ${currentPage + 1}`}
-                className="w-full h-full object-contain cursor-pointer select-none"
-                onClick={() => window.open(imageUrl, '_blank')}
+                className="w-full h-full object-contain cursor-zoom-in select-none transition-transform duration-200"
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: 'center center'
+                }}
+                onClick={(e) => {
+                  if (zoomLevel === 1) {
+                    setZoomLevel(2);
+                  } else if (zoomLevel === 2) {
+                    setZoomLevel(3);
+                  } else {
+                    setZoomLevel(1);
+                  }
+                }}
                 data-testid="img-document"
               />
+              {zoomLevel > 1 && (
+                <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                  {Math.round(zoomLevel * 100)}% - Click to zoom
+                </div>
+              )}
             </div>
 
             {/* Page Thumbnails for Multi-page documents */}
@@ -434,9 +457,8 @@ export default function DocumentDetailPage() {
 
           {/* Document Metadata */}
           <div className="space-y-6">
-            {/* Status and Type */}
+            {/* Status and Dates */}
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{document.docType}</Badge>
               {document.dueDate && (
                 <Badge variant="outline">
                   Due {format(new Date(document.dueDate), 'MMM d, yyyy')}
