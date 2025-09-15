@@ -63,6 +63,12 @@ export default function DocumentDetailPage() {
     enabled: !!user,
   });
 
+  // Fetch all documents for navigation between documents
+  const { data: allDocuments = [] } = useQuery<DocumentWithChild[]>({
+    queryKey: ['/api/documents'],
+    enabled: !!user,
+  });
+
   // Form state
   const [formData, setFormData] = useState({
     title: '',
@@ -84,6 +90,18 @@ export default function DocumentDetailPage() {
       : []);
   const pages = parsed.length ? parsed : [document?.storagePath || ''];
 
+  // Sort documents by creation date (descending) for consistent navigation order
+  const sortedDocuments = React.useMemo(() => {
+    return [...allDocuments].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [allDocuments]);
+
+  // Document navigation - find current document's position in the sorted list
+  const currentDocumentIndex = sortedDocuments.findIndex(doc => doc.id === id);
+  const previousDocument = currentDocumentIndex > 0 ? sortedDocuments[currentDocumentIndex - 1] : null;
+  const nextDocument = currentDocumentIndex < sortedDocuments.length - 1 ? sortedDocuments[currentDocumentIndex + 1] : null;
+
   // Clamp currentPage when pages change
   React.useEffect(() => {
     if (pages.length > 0) {
@@ -95,6 +113,12 @@ export default function DocumentDetailPage() {
   React.useEffect(() => {
     setZoomLevel(1);
   }, [currentPage]);
+
+  // Reset page to 0 when navigating to a new document
+  React.useEffect(() => {
+    setCurrentPage(0);
+    setZoomLevel(1);
+  }, [id]);
 
   // Initialize form when document loads
   React.useEffect(() => {
@@ -228,19 +252,19 @@ export default function DocumentDetailPage() {
   };
 
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
+    if (touchStart === null || touchEnd === null) return;
     
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
 
-    if (isLeftSwipe && currentPage < pages.length - 1) {
-      // Swipe left = next page
-      setCurrentPage(currentPage + 1);
+    if (isLeftSwipe && nextDocument) {
+      // Swipe left = next document
+      navigate(`/app/doc/${nextDocument.id}`);
     }
-    if (isRightSwipe && currentPage > 0) {
-      // Swipe right = previous page
-      setCurrentPage(currentPage - 1);
+    if (isRightSwipe && previousDocument) {
+      // Swipe right = previous document
+      navigate(`/app/doc/${previousDocument.id}`);
     }
   };
 
@@ -303,37 +327,38 @@ export default function DocumentDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Document Image with Multi-page Support */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Page Navigation */}
-            {pages.length > 1 && (
-              <div className="flex items-center justify-between p-3 bg-card rounded-lg border">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                  disabled={currentPage === 0}
-                  data-testid="button-prev-page"
-                >
-                  ← Previous
-                </Button>
-                <div className="text-center">
-                  <span className="text-sm font-medium" data-testid="text-page-indicator">
-                    Page {currentPage + 1} of {pages.length}
-                  </span>
-                  <div className="text-xs text-muted-foreground mt-1 sm:hidden">
-                    Swipe to navigate
-                  </div>
+            {/* Document Navigation */}
+            <div className="flex items-center justify-between p-3 bg-card rounded-lg border">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => previousDocument && navigate(`/app/doc/${previousDocument.id}`)}
+                disabled={!previousDocument || currentDocumentIndex < 0}
+                data-testid="button-prev-document"
+              >
+                ← Previous
+              </Button>
+              <div className="text-center">
+                <span className="text-sm font-medium" data-testid="text-document-indicator">
+                  {currentDocumentIndex >= 0 ? 
+                    `Document ${currentDocumentIndex + 1} of ${sortedDocuments.length}` : 
+                    'Loading documents...'
+                  }
+                </span>
+                <div className="text-xs text-muted-foreground mt-1 sm:hidden">
+                  Swipe to navigate
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))}
-                  disabled={currentPage === pages.length - 1}
-                  data-testid="button-next-page"
-                >
-                  Next →
-                </Button>
               </div>
-            )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => nextDocument && navigate(`/app/doc/${nextDocument.id}`)}
+                disabled={!nextDocument || currentDocumentIndex < 0}
+                data-testid="button-next-document"
+              >
+                Next →
+              </Button>
+            </div>
 
             <div 
               className="h-[70vh] sm:h-[75vh] lg:h-[80vh] bg-muted rounded-xl overflow-hidden relative"
