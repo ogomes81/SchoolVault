@@ -46,17 +46,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </div>
       </header>
 
-      {/* Child Selector Below Header */}
-      <div className="bg-white/50 border-b border-slate-100 px-4 sm:px-6 lg:px-8 py-3">
-        <div className="max-w-7xl mx-auto">
-          <ChildSelector
-            children={childrenData}
-            selectedChildId={selectedChild}
-            onChildChange={setSelectedChild}
-            includeAll={false}
-          />
+      {/* Child Selector Below Header - Only show on home page */}
+      {location === '/app' && (
+        <div className="bg-white/50 border-b border-slate-100 px-4 sm:px-6 lg:px-8 py-3">
+          <div className="max-w-7xl mx-auto">
+            <ChildSelector
+              children={childrenData}
+              selectedChildId={selectedChild}
+              onChildChange={setSelectedChild}
+              includeAll={false}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main content */}
       <div className="pb-20 lg:pb-0">
