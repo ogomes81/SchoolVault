@@ -394,7 +394,7 @@ export default function DocumentDetailPage() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <CalendarIcon className="w-4 h-4" />
-                  <span>Added: {format(new Date(document.createdAt), 'MMM d, yyyy')}</span>
+                  <span data-testid="text-added-date">Added: {format(new Date(document.createdAt), 'MMM d, yyyy')}</span>
                 </div>
                 <Button 
                   variant="destructive" 
@@ -411,9 +411,13 @@ export default function DocumentDetailPage() {
             
             {/* Document Type Dropdown */}
             <div className="mt-4">
-              <Select value={document.docType} onValueChange={(value) => {
-                updateMutation.mutate({ docType: value });
-              }}>
+              <Select 
+                value={document.docType} 
+                onValueChange={(value) => {
+                  updateMutation.mutate({ docType: value });
+                }}
+                disabled={updateMutation.isPending}
+              >
                 <SelectTrigger className="w-full" data-testid="select-document-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -464,10 +468,6 @@ export default function DocumentDetailPage() {
                   <span><span className="font-medium">Teacher:</span> {document.teacher}</span>
                 </div>
               )}
-              <div className="flex items-center justify-center gap-3 text-sm">
-                <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                <span><span className="font-medium">Added:</span> {format(new Date(document.createdAt), 'MMM d, yyyy')}</span>
-              </div>
             </div>
 
             {/* Editable Form */}
@@ -581,10 +581,6 @@ export default function DocumentDetailPage() {
                     </div>
                   </div>
                 )}
-
-                <Button onClick={() => setIsEditing(true)} data-testid="button-edit">
-                  Edit Document
-                </Button>
               </div>
             )}
 
