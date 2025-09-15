@@ -12,6 +12,7 @@ import DocumentDetailPage from "@/pages/DocumentDetailPage";
 import PublicSharePage from "@/pages/PublicSharePage";
 import ChildrenPage from "@/pages/ChildrenPage";
 import NotFound from "@/pages/not-found";
+import AppLayout from "@/components/AppLayout";
 
 function Router() {
   const [initialized, setInitialized] = useState(false);
@@ -37,11 +38,11 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <Route path="/app" component={DashboardPage} />
-      <Route path="/app/upload" component={UploadPage} />
-      <Route path="/app/children" component={ChildrenPage} />
-      <Route path="/app/doc/:id" component={DocumentDetailPage} />
       <Route path="/s/:token" component={PublicSharePage} />
+      <Route path="/app" component={() => <AppLayout><DashboardPage /></AppLayout>} />
+      <Route path="/app/upload" component={() => <AppLayout><UploadPage /></AppLayout>} />
+      <Route path="/app/children" component={() => <AppLayout><ChildrenPage /></AppLayout>} />
+      <Route path="/app/doc/:id" component={() => <AppLayout><DocumentDetailPage /></AppLayout>} />
       <Route path="/">
         {() => {
           // Redirect to dashboard if we have a session, otherwise to auth
