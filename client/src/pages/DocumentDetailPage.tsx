@@ -368,35 +368,45 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleDownloadImage} data-testid="button-download">
-                <Download className="w-4 h-4 mr-2" />
-                Download Page {currentPage + 1}
-              </Button>
-              <Button variant="outline" onClick={() => window.open(imageUrl, '_blank')} data-testid="button-view-fullsize">
-                <ZoomIn className="w-4 h-4 mr-2" />
-                View Full Size
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                data-testid="button-delete"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </Button>
-              {pages.length > 1 && (
-                <Button variant="outline" onClick={() => {
-                  // Download all pages as ZIP would be nice, but for now show count
-                  toast({
-                    title: "Multi-page Document",
-                    description: `This document has ${pages.length} pages. Use Previous/Next to view all pages.`,
-                  });
-                }} data-testid="button-multipage-info">
-                  📄 {pages.length} Pages
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleDownloadImage} data-testid="button-download">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Page {currentPage + 1}
                 </Button>
-              )}
+                <Button variant="outline" onClick={() => window.open(imageUrl, '_blank')} data-testid="button-view-fullsize">
+                  <ZoomIn className="w-4 h-4 mr-2" />
+                  View Full Size
+                </Button>
+                {pages.length > 1 && (
+                  <Button variant="outline" onClick={() => {
+                    // Download all pages as ZIP would be nice, but for now show count
+                    toast({
+                      title: "Multi-page Document",
+                      description: `This document has ${pages.length} pages. Use Previous/Next to view all pages.`,
+                    });
+                  }} data-testid="button-multipage-info">
+                    📄 {pages.length} Pages
+                  </Button>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CalendarIcon className="w-4 h-4" />
+                  <span>Added: {format(new Date(document.createdAt), 'MMM d, yyyy')}</span>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                  data-testid="button-delete"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
             </div>
           </div>
 
