@@ -57,13 +57,8 @@ export default function DocCard({ document, onDocumentClick, onShare, onExportCa
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // For multi-page documents, use gallery mode
-    if (isMultiPage) {
-      onDocumentClick(document.id, true, 0);
-    } else {
-      // Single page documents go to detail page
-      onDocumentClick(document.id, false);
-    }
+    // All documents go to detail page (both single and multi-page)
+    onDocumentClick(document.id, false);
   };
 
   const handleShare = (e: React.MouseEvent) => {
