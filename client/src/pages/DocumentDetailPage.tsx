@@ -409,6 +409,15 @@ export default function DocumentDetailPage() {
                 <ZoomIn className="w-4 h-4 mr-2" />
                 View Full Size
               </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                data-testid="button-delete"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </Button>
               {pages.length > 1 && (
                 <Button variant="outline" onClick={() => {
                   // Download all pages as ZIP would be nice, but for now show count
@@ -583,17 +592,6 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-
-            {/* Delete Button */}
-            <Button 
-              variant="destructive" 
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-              data-testid="button-delete"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete Document'}
-            </Button>
           </div>
         </div>
 
