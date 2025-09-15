@@ -587,43 +587,6 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-            {/* Sharing Controls */}
-            <Card className="bg-muted/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-card-foreground">Public Sharing</h4>
-                    <p className="text-sm text-muted-foreground">Allow others to view this document with a link</p>
-                  </div>
-                  <Switch 
-                    checked={document.isShared || false} 
-                    onCheckedChange={handleToggleSharing}
-                    data-testid="switch-sharing"
-                  />
-                </div>
-                {document.isShared && shareUrl && (
-                  <div className="mt-3 p-2 bg-background rounded border">
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        value={shareUrl} 
-                        readOnly 
-                        className="text-sm bg-transparent border-none text-muted-foreground"
-                        data-testid="input-share-url"
-                      />
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={handleCopyShareLink}
-                        data-testid="button-copy-link"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
             {/* Delete Button */}
             <Button 
