@@ -1,4 +1,5 @@
 import { apiClient } from './api';
+import { notificationManager } from './notifications';
 import { ENV } from '../config/env';
 
 export interface UploadProgress {
@@ -99,9 +100,12 @@ class UploadManager {
         status: 'processing' 
       });
 
+      // Show upload complete notification
+      await notificationManager.notifyUploadComplete(title);
+
       // Start polling for processing completion
       if (result.data) {
-        this.pollDocumentProcessing(uploadId, result.data.id);
+        this.pollDocumentProcessing(uploadId, result.data.id, title);
       }
 
       return uploadId;
@@ -118,7 +122,7 @@ class UploadManager {
   }
 
   // Poll document processing status
-  private async pollDocumentProcessing(uploadId: string, documentId: string) {
+  private async pollDocumentProcessing(uploadId: string, documentId: string, title: string) {
     const maxAttempts = 30; // 30 attempts = ~2.5 minutes
     let attempts = 0;
 
@@ -138,6 +142,9 @@ class UploadManager {
               status: 'completed',
             });
             
+            // Show success notification
+            await notificationManager.notifyDocumentProcessed(title, 'processed');
+            
             // Remove completed upload after 5 seconds
             setTimeout(() => {
               this.uploads.delete(uploadId);
@@ -151,6 +158,9 @@ class UploadManager {
               status: 'failed',
               error: 'Document processing failed',
             });
+            
+            // Show failure notification
+            await notificationManager.notifyDocumentProcessed(title, 'failed');
             return;
           }
           

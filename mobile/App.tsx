@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { supabase, getCurrentUser } from './lib/supabase';
+import { notificationManager } from './lib/notifications';
 import AuthScreen from './screens/AuthScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import UploadScreen from './screens/UploadScreen';
@@ -26,23 +27,31 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('loading');
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>('');
+  const [notificationListeners, setNotificationListeners] = useState<any>(null);
 
   useEffect(() => {
     initializeApp();
     
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         setCurrentScreen('dashboard');
-        loadChildren();
+        await loadChildren();
+        await setupNotifications(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         setCurrentScreen('auth');
         setChildren([]);
+        await cleanupNotifications();
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      subscription.unsubscribe();
+      if (notificationListeners) {
+        notificationManager.removeListeners(notificationListeners);
+      }
+    };
+  }, [notificationListeners]);
 
   const initializeApp = async () => {
     try {
@@ -50,12 +59,39 @@ export default function App() {
       if (user) {
         setCurrentScreen('dashboard');
         await loadChildren();
+        await setupNotifications(user.id);
       } else {
         setCurrentScreen('auth');
       }
     } catch (error) {
       console.error('Error initializing app:', error);
       setCurrentScreen('auth');
+    }
+  };
+
+  const setupNotifications = async (userId: string) => {
+    try {
+      const initialized = await notificationManager.initialize();
+      if (initialized) {
+        const listeners = notificationManager.addListeners();
+        setNotificationListeners(listeners);
+        await notificationManager.registerDevice(userId);
+      }
+    } catch (error) {
+      console.error('Error setting up notifications:', error);
+    }
+  };
+
+  const cleanupNotifications = async () => {
+    try {
+      await notificationManager.unregisterDevice();
+      await notificationManager.clearAllNotifications();
+      if (notificationListeners) {
+        notificationManager.removeListeners(notificationListeners);
+        setNotificationListeners(null);
+      }
+    } catch (error) {
+      console.error('Error cleaning up notifications:', error);
     }
   };
 
@@ -70,12 +106,19 @@ export default function App() {
     }
   };
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = async () => {
     setCurrentScreen('dashboard');
-    loadChildren();
+    await loadChildren();
+    
+    // Get current user and setup notifications
+    const user = await getCurrentUser();
+    if (user) {
+      await setupNotifications(user.id);
+    }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await cleanupNotifications();
     setCurrentScreen('auth');
     setChildren([]);
   };
