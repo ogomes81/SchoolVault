@@ -17,12 +17,14 @@ interface DashboardScreenProps {
   onLogout: () => void;
   onNavigateToUpload: () => void;
   onNavigateToDocument: (documentId: string) => void;
+  onNavigateToChildren: () => void;
 }
 
 export default function DashboardScreen({
   onLogout,
   onNavigateToUpload,
   onNavigateToDocument,
+  onNavigateToChildren,
 }: DashboardScreenProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
@@ -164,13 +166,23 @@ export default function DashboardScreen({
       )}
 
       <View style={styles.actionBar}>
-        <TouchableOpacity
-          style={styles.uploadButton}
-          onPress={onNavigateToUpload}
-          testID="button-upload"
-        >
-          <Text style={styles.uploadButtonText}>+ Upload Document</Text>
-        </TouchableOpacity>
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={onNavigateToUpload}
+            testID="button-upload"
+          >
+            <Text style={styles.uploadButtonText}>+ Upload Document</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.childrenButton}
+            onPress={onNavigateToChildren}
+            testID="button-manage-children"
+          >
+            <Text style={styles.childrenButtonText}>👨‍👩‍👧‍👦 Manage Children</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -262,7 +274,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   uploadButton: {
+    flex: 2,
     backgroundColor: '#2563eb',
     borderRadius: 8,
     padding: 16,
@@ -272,6 +289,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  childrenButton: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  childrenButtonText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   documentsList: {
     padding: 16,

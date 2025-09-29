@@ -7,6 +7,7 @@ import AuthScreen from './screens/AuthScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import UploadScreen from './screens/UploadScreen';
 import DocumentDetailScreen from './screens/DocumentDetailScreen';
+import ChildrenManagementScreen from './screens/ChildrenManagementScreen';
 import { apiClient } from './lib/api';
 import type { Child } from './types/shared';
 
@@ -19,7 +20,7 @@ const queryClient = new QueryClient({
   },
 });
 
-type Screen = 'loading' | 'auth' | 'dashboard' | 'upload' | 'document';
+type Screen = 'loading' | 'auth' | 'dashboard' | 'upload' | 'document' | 'children';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('loading');
@@ -88,6 +89,10 @@ export default function App() {
     setCurrentScreen('document');
   };
 
+  const handleNavigateToChildren = () => {
+    setCurrentScreen('children');
+  };
+
   const handleGoBackToDashboard = () => {
     setCurrentScreen('dashboard');
     loadChildren(); // Refresh data when going back
@@ -111,6 +116,7 @@ export default function App() {
             onLogout={handleLogout}
             onNavigateToUpload={handleNavigateToUpload}
             onNavigateToDocument={handleNavigateToDocument}
+            onNavigateToChildren={handleNavigateToChildren}
           />
         );
       
@@ -126,6 +132,13 @@ export default function App() {
         return (
           <DocumentDetailScreen
             documentId={selectedDocumentId}
+            onGoBack={handleGoBackToDashboard}
+          />
+        );
+      
+      case 'children':
+        return (
+          <ChildrenManagementScreen
             onGoBack={handleGoBackToDashboard}
           />
         );
