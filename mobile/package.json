@@ -28,7 +28,8 @@
     "expo-notifications": "~0.31.0",
     "expo-device": "~7.0.1",
     "expo-sharing": "~13.0.2",
-    "expo-clipboard": "~8.0.1"
+    "expo-clipboard": "~8.0.1",
+    "expo-haptics": "~14.0.0"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
