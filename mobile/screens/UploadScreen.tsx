@@ -11,8 +11,9 @@ import {
   Modal,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { apiClient } from '../lib/api';
+import { uploadManager } from '../lib/uploadManager';
 import DocumentScanner from '../components/DocumentScanner';
+import UploadProgress from '../components/UploadProgress';
 import type { Child } from '../types/shared';
 
 interface UploadScreenProps {
@@ -27,6 +28,7 @@ export default function UploadScreen({ onGoBack, children }: UploadScreenProps) 
   const [docType, setDocType] = useState('Other');
   const [uploading, setUploading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
 
   const docTypes = ['Homework', 'Permission Slip', 'Flyer', 'Report Card', 'Other'];
 
@@ -88,39 +90,46 @@ export default function UploadScreen({ onGoBack, children }: UploadScreenProps) 
     setUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('docType', docType);
-      
-      if (selectedChildId) {
-        formData.append('childId', selectedChildId);
-      }
+      // Start background upload
+      await uploadManager.uploadDocument(
+        title,
+        selectedImages,
+        docType,
+        selectedChildId || undefined
+      );
 
-      // Add all selected images
-      selectedImages.forEach((imageUri, index) => {
-        formData.append('files', {
-          uri: imageUri,
-          type: 'image/jpeg',
-          name: `page_${index + 1}.jpg`,
-        } as any);
-      });
+      // Show success message and reset form
+      Alert.alert(
+        'Upload Started',
+        'Your document is being uploaded and processed. You can track progress in the uploads panel.',
+        [
+          {
+            text: 'View Progress',
+            onPress: () => setShowProgress(true),
+          },
+          {
+            text: 'Upload Another',
+            onPress: resetForm,
+          },
+          {
+            text: 'Go Back',
+            onPress: onGoBack,
+          },
+        ]
+      );
 
-      const result = await apiClient.createDocument(formData);
-
-      if (result.error) {
-        Alert.alert('Upload Failed', result.error);
-      } else {
-        Alert.alert(
-          'Success',
-          'Document uploaded successfully! OCR processing will begin shortly.',
-          [{ text: 'OK', onPress: onGoBack }]
-        );
-      }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Upload failed');
+      Alert.alert('Upload Failed', error.message || 'Upload failed');
     } finally {
       setUploading(false);
     }
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setSelectedImages([]);
+    setDocType('Other');
+    setSelectedChildId('');
   };
 
   return (
@@ -130,6 +139,12 @@ export default function UploadScreen({ onGoBack, children }: UploadScreenProps) 
           <Text style={styles.backButton}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Upload Document</Text>
+        <TouchableOpacity 
+          onPress={() => setShowProgress(true)} 
+          testID="button-view-progress"
+        >
+          <Text style={styles.progressButton}>📊 Progress</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.form}>
@@ -280,6 +295,12 @@ export default function UploadScreen({ onGoBack, children }: UploadScreenProps) 
           onClose={() => setShowScanner(false)}
         />
       </Modal>
+
+      {/* Upload Progress Modal */}
+      <UploadProgress
+        visible={showProgress}
+        onClose={() => setShowProgress(false)}
+      />
     </ScrollView>
   );
 }
@@ -291,6 +312,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
     paddingTop: 60,
@@ -301,12 +323,17 @@ const styles = StyleSheet.create({
   backButton: {
     color: '#2563eb',
     fontSize: 16,
-    marginRight: 16,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#111827',
+    flex: 1,
+    textAlign: 'center',
+  },
+  progressButton: {
+    color: '#2563eb',
+    fontSize: 16,
   },
   form: {
     padding: 20,
