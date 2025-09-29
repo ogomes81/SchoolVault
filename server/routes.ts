@@ -756,12 +756,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate share token for document (mobile API)
+  app.post("/api/documents/:id/share", async (req, res) => {
+    try {
+      const documentId = req.params.id;
+      const { isPublic = false, expiresIn = 24 } = req.body;
+      
+      // Generate a random share token
+      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      // Calculate expiration date
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + expiresIn);
+      
+      // Update document with share token
+      await storage.updateDocument(documentId, {
+        isShared: true,
+        shareToken: token,
+        shareExpiresAt: expiresAt.toISOString(),
+        shareIsPublic: isPublic,
+      });
+
+      res.json({
+        token,
+        expiresAt: expiresAt.toISOString(),
+      });
+    } catch (error) {
+      console.error("Error generating share token:", error);
+      res.status(500).json({ message: "Failed to generate share token" });
+    }
+  });
+
+  // Validate share token (mobile API)
+  app.get("/api/shared/:token/validate", async (req, res) => {
+    try {
+      const document = await storage.getDocumentByShareToken(req.params.token);
+      if (!document || !document.isShared) {
+        return res.status(404).json({ message: "Invalid share token" });
+      }
+
+      // Check if token has expired
+      if (document.shareExpiresAt && new Date() > new Date(document.shareExpiresAt)) {
+        return res.status(410).json({ message: "Share token has expired" });
+      }
+
+      res.json({ documentId: document.id });
+    } catch (error) {
+      console.error("Error validating share token:", error);
+      res.status(500).json({ message: "Failed to validate share token" });
+    }
+  });
+
+  // Revoke share token (mobile API)
+  app.delete("/api/shared/:token", async (req, res) => {
+    try {
+      const document = await storage.getDocumentByShareToken(req.params.token);
+      if (!document) {
+        return res.status(404).json({ message: "Share token not found" });
+      }
+
+      // Disable sharing for the document
+      await storage.updateDocument(document.id, {
+        isShared: false,
+        shareToken: null,
+        shareExpiresAt: null,
+        shareIsPublic: false,
+      });
+
+      res.json({ message: "Share token revoked successfully" });
+    } catch (error) {
+      console.error("Error revoking share token:", error);
+      res.status(500).json({ message: "Failed to revoke share token" });
+    }
+  });
+
+  // Get document share links (mobile API)
+  app.get("/api/documents/:id/share", async (req, res) => {
+    try {
+      const document = await storage.getDocument(req.params.id);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      if (!document.isShared || !document.shareToken) {
+        return res.json([]);
+      }
+
+      res.json([{
+        token: document.shareToken,
+        expiresAt: document.shareExpiresAt,
+        isPublic: document.shareIsPublic,
+      }]);
+    } catch (error) {
+      console.error("Error getting share links:", error);
+      res.status(500).json({ message: "Failed to get share links" });
+    }
+  });
+
   // Shared documents route (public access)
   app.get("/api/shared/:token", async (req, res) => {
     try {
       const document = await storage.getDocumentByShareToken(req.params.token);
       if (!document || !document.isShared) {
         return res.status(404).json({ message: "Shared document not found" });
+      }
+
+      // Check if token has expired
+      if (document.shareExpiresAt && new Date() > new Date(document.shareExpiresAt)) {
+        return res.status(410).json({ message: "Share link has expired" });
       }
 
       res.json(document);

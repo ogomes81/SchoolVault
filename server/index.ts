@@ -3,6 +3,36 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// CORS configuration for mobile apps
+app.use((req, res, next) => {
+  // Allow requests from mobile apps and development environments
+  const allowedOrigins = [
+    'http://localhost:8081',  // Expo development
+    'http://localhost:19006', // Expo web
+    'exp://localhost:8081',   // Expo Go
+    'https://your-app.replit.app', // Production web
+  ];
+
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+
+  // Essential headers for mobile API requests
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '3600');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
