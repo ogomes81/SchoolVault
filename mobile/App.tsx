@@ -6,6 +6,7 @@ import { supabase, getCurrentUser } from './lib/supabase';
 import AuthScreen from './screens/AuthScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import UploadScreen from './screens/UploadScreen';
+import DocumentDetailScreen from './screens/DocumentDetailScreen';
 import { apiClient } from './lib/api';
 import type { Child } from './types/shared';
 
@@ -122,11 +123,11 @@ export default function App() {
         );
       
       case 'document':
-        // TODO: Implement DocumentDetailScreen
         return (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2563eb" />
-          </View>
+          <DocumentDetailScreen
+            documentId={selectedDocumentId}
+            onGoBack={handleGoBackToDashboard}
+          />
         );
       
       default:

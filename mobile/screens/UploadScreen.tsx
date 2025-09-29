@@ -8,9 +8,11 @@ import {
   Alert,
   ScrollView,
   TextInput,
+  Modal,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { apiClient } from '../lib/api';
+import DocumentScanner from '../components/DocumentScanner';
 import type { Child } from '../types/shared';
 
 interface UploadScreenProps {
@@ -24,6 +26,7 @@ export default function UploadScreen({ onGoBack, children }: UploadScreenProps) 
   const [selectedChildId, setSelectedChildId] = useState<string>('');
   const [docType, setDocType] = useState('Other');
   const [uploading, setUploading] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   const docTypes = ['Homework', 'Permission Slip', 'Flyer', 'Report Card', 'Other'];
 
@@ -51,25 +54,19 @@ export default function UploadScreen({ onGoBack, children }: UploadScreenProps) 
     }
   };
 
-  const takePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant permission to access your camera.');
-        return;
-      }
+  const openDocumentScanner = () => {
+    setShowScanner(true);
+  };
 
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets) {
-        setSelectedImages([...selectedImages, result.assets[0].uri]);
-      }
-    } catch (error) {
-      console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo');
+  const handleScannerImages = (images: string[]) => {
+    setSelectedImages([...selectedImages, ...images]);
+    setShowScanner(false);
+    
+    // Auto-generate title if none exists
+    if (!title.trim() && images.length > 0) {
+      const now = new Date();
+      const defaultTitle = `Document ${now.toLocaleDateString()}`;
+      setTitle(defaultTitle);
     }
   };
 
@@ -222,18 +219,18 @@ export default function UploadScreen({ onGoBack, children }: UploadScreenProps) 
           <Text style={styles.label}>Images</Text>
           <View style={styles.imageActions}>
             <TouchableOpacity
-              style={styles.imageActionButton}
-              onPress={takePhoto}
-              testID="button-camera"
+              style={styles.primaryActionButton}
+              onPress={openDocumentScanner}
+              testID="button-scan-document"
             >
-              <Text style={styles.imageActionText}>📷 Take Photo</Text>
+              <Text style={styles.primaryActionText}>📱 Scan Document</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.imageActionButton}
+              style={styles.secondaryActionButton}
               onPress={pickImages}
               testID="button-gallery"
             >
-              <Text style={styles.imageActionText}>🖼️ Choose from Gallery</Text>
+              <Text style={styles.secondaryActionText}>🖼️ Choose from Gallery</Text>
             </TouchableOpacity>
           </View>
 
@@ -271,6 +268,18 @@ export default function UploadScreen({ onGoBack, children }: UploadScreenProps) 
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Document Scanner Modal */}
+      <Modal
+        visible={showScanner}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        <DocumentScanner
+          onImagesSelected={handleScannerImages}
+          onClose={() => setShowScanner(false)}
+        />
+      </Modal>
     </ScrollView>
   );
 }
@@ -368,19 +377,30 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   imageActions: {
-    flexDirection: 'row',
     marginBottom: 16,
   },
-  imageActionButton: {
-    flex: 1,
+  primaryActionButton: {
     backgroundColor: '#2563eb',
+    borderRadius: 8,
+    padding: 18,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  primaryActionText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryActionButton: {
+    backgroundColor: '#f3f4f6',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
   },
-  imageActionText: {
-    color: 'white',
+  secondaryActionText: {
+    color: '#374151',
     fontSize: 14,
     fontWeight: '500',
   },
