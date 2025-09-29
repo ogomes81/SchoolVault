@@ -106,6 +106,31 @@ class ApiClient {
     });
   }
 
+  // Sharing
+  async generateShareToken(
+    documentId: string,
+    options: { isPublic?: boolean; expiresIn?: number }
+  ): Promise<ApiResponse<{ token: string; expiresAt?: string }>> {
+    return this.request(`/api/documents/${documentId}/share`, {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  }
+
+  async validateShareToken(token: string): Promise<ApiResponse<{ documentId: string }>> {
+    return this.request(`/api/shared/${token}/validate`);
+  }
+
+  async revokeShareToken(token: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/api/shared/${token}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getDocumentShareLinks(documentId: string): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>(`/api/documents/${documentId}/share`);
+  }
+
   // Profile
   async getProfile(): Promise<ApiResponse<Profile>> {
     return this.request<Profile>('/api/profile');

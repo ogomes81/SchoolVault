@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { apiClient } from '../lib/api';
+import DocumentSharing from '../components/DocumentSharing';
 import type { Document } from '../types/shared';
 
 interface DocumentDetailScreenProps {
@@ -27,6 +28,7 @@ export default function DocumentDetailScreen({
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showSharing, setShowSharing] = useState(false);
 
   useEffect(() => {
     loadDocument();
@@ -48,29 +50,9 @@ export default function DocumentDetailScreen({
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
     if (!document) return;
-
-    try {
-      if (document.isShared && document.shareToken) {
-        const shareUrl = `https://your-app.com/s/${document.shareToken}`;
-        await Share.share({
-          message: `Check out this document: ${document.title}\n${shareUrl}`,
-          url: shareUrl,
-        });
-      } else {
-        Alert.alert(
-          'Document Not Shared',
-          'This document is not currently shared. Would you like to enable sharing?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Enable Sharing', onPress: enableSharing },
-          ]
-        );
-      }
-    } catch (error) {
-      console.error('Error sharing document:', error);
-    }
+    setShowSharing(true);
   };
 
   const enableSharing = async () => {
@@ -266,6 +248,14 @@ export default function DocumentDetailScreen({
           </View>
         </View>
       </View>
+
+      {/* Document Sharing Modal */}
+      <DocumentSharing
+        documentId={document.id}
+        documentTitle={document.title}
+        visible={showSharing}
+        onClose={() => setShowSharing(false)}
+      />
     </ScrollView>
   );
 }
