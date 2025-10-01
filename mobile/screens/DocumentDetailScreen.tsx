@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  Share,
   Dimensions,
 } from 'react-native';
 import { apiClient } from '../lib/api';
 import DocumentSharing from '../components/DocumentSharing';
+import StripeLoadingScreen from '../components/StripeLoadingScreen';
+import ContextualMenu from '../components/ContextualMenu';
+import { theme } from '../styles/theme';
 import type { Document } from '../types/shared';
 
 interface DocumentDetailScreenProps {
@@ -29,6 +31,7 @@ export default function DocumentDetailScreen({
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showSharing, setShowSharing] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   useEffect(() => {
     loadDocument();
@@ -53,26 +56,6 @@ export default function DocumentDetailScreen({
   const handleShare = () => {
     if (!document) return;
     setShowSharing(true);
-  };
-
-  const enableSharing = async () => {
-    if (!document) return;
-
-    try {
-      const result = await apiClient.updateDocument(document.id, {
-        isShared: true,
-      });
-
-      if (result.data) {
-        setDocument(result.data);
-        Alert.alert('Success', 'Document sharing has been enabled!');
-      } else if (result.error) {
-        Alert.alert('Error', result.error);
-      }
-    } catch (error) {
-      console.error('Error enabling sharing:', error);
-      Alert.alert('Error', 'Failed to enable sharing');
-    }
   };
 
   const handleDeleteDocument = () => {
@@ -109,111 +92,132 @@ export default function DocumentDetailScreen({
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading document...</Text>
-      </View>
-    );
+    return <StripeLoadingScreen />;
   }
 
   if (!document) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Document not found</Text>
-        <TouchableOpacity style={styles.backButton} onPress={onGoBack}>
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onGoBack} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Document not found</Text>
+          <Text style={styles.errorText}>
+            This document may have been deleted or you don't have access to it.
+          </Text>
+        </View>
       </View>
     );
   }
 
-  const images = document.pages.length > 0 ? document.pages : [document.storagePath];
+  const images = document.storagePath ? [document.storagePath] : [];
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      {/* Stripe-style header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onGoBack} testID="button-back">
+        <TouchableOpacity
+          onPress={onGoBack}
+          style={styles.backButton}
+          testID="button-back"
+        >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleShare} testID="button-share">
-            <Text style={styles.actionButton}>Share</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDeleteDocument} testID="button-delete">
-            <Text style={[styles.actionButton, styles.deleteButton]}>Delete</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => setMenuVisible(true)}
+          style={styles.menuButton}
+          testID="button-menu"
+        >
+          <Text style={styles.menuButtonText}>⋯</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
-        {/* Document Images */}
-        <View style={styles.imageContainer}>
-          {images.map((imagePath, index) => (
+      <ScrollView style={styles.scrollView}>
+        {/* Image Viewer */}
+        {images.length > 0 && (
+          <View style={styles.imageContainer}>
             <Image
-              key={index}
-              source={{ uri: imagePath }}
-              style={styles.documentImage}
+              source={{ uri: images[currentImageIndex] }}
+              style={styles.image}
               resizeMode="contain"
             />
-          ))}
-          {images.length > 1 && (
-            <Text style={styles.pageCount}>
-              {images.length} page{images.length > 1 ? 's' : ''}
-            </Text>
-          )}
-        </View>
-
-        {/* Document Info */}
-        <View style={styles.infoSection}>
-          <Text style={styles.title}>{document.title}</Text>
-          
-          <View style={styles.metadataRow}>
-            <Text style={styles.label}>Type:</Text>
-            <Text style={styles.value}>{document.docType}</Text>
+            {images.length > 1 && (
+              <View style={styles.imagePagination}>
+                {images.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      index === currentImageIndex && styles.paginationDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
+        )}
 
-          <View style={styles.metadataRow}>
-            <Text style={styles.label}>Status:</Text>
+        {/* Document Info Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>{document.title}</Text>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaText}>{document.docType}</Text>
+                <Text style={styles.metaDivider}>•</Text>
+                <Text style={styles.metaText}>
+                  {new Date(document.uploadedAt || '').toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </Text>
+              </View>
+            </View>
             <View style={[styles.statusBadge, styles[`status${document.status}`]]}>
               <Text style={styles.statusText}>{document.status}</Text>
             </View>
           </View>
 
-          {document.dueDate && (
-            <View style={styles.metadataRow}>
-              <Text style={styles.label}>Due Date:</Text>
-              <Text style={styles.value}>
-                {new Date(document.dueDate).toLocaleDateString()}
-              </Text>
-            </View>
-          )}
-
-          {document.eventDate && (
-            <View style={styles.metadataRow}>
-              <Text style={styles.label}>Event Date:</Text>
-              <Text style={styles.value}>
-                {new Date(document.eventDate).toLocaleDateString()}
-              </Text>
-            </View>
-          )}
-
-          {document.teacher && (
-            <View style={styles.metadataRow}>
-              <Text style={styles.label}>Teacher:</Text>
-              <Text style={styles.value}>{document.teacher}</Text>
-            </View>
-          )}
-
-          {document.subject && (
-            <View style={styles.metadataRow}>
-              <Text style={styles.label}>Subject:</Text>
-              <Text style={styles.value}>{document.subject}</Text>
-            </View>
-          )}
-
-          {document.tags.length > 0 && (
+          {/* Metadata */}
+          {(document.dueDate || document.eventDate || document.teacher || document.subject) && (
             <View style={styles.metadataSection}>
-              <Text style={styles.label}>Tags:</Text>
+              {document.dueDate && (
+                <MetadataItem
+                  label="Due Date"
+                  value={new Date(document.dueDate).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                />
+              )}
+              {document.eventDate && (
+                <MetadataItem
+                  label="Event Date"
+                  value={new Date(document.eventDate).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                />
+              )}
+              {document.teacher && (
+                <MetadataItem label="Teacher" value={document.teacher} />
+              )}
+              {document.subject && (
+                <MetadataItem label="Subject" value={document.subject} />
+              )}
+            </View>
+          )}
+
+          {/* Tags */}
+          {document.tags.length > 0 && (
+            <View style={styles.tagsSection}>
+              <Text style={styles.sectionLabel}>Tags</Text>
               <View style={styles.tagsContainer}>
                 {document.tags.map((tag, index) => (
                   <View key={index} style={styles.tag}>
@@ -223,196 +227,289 @@ export default function DocumentDetailScreen({
               </View>
             </View>
           )}
-
-          {document.ocrText && (
-            <View style={styles.metadataSection}>
-              <Text style={styles.label}>Extracted Text:</Text>
-              <View style={styles.ocrTextContainer}>
-                <Text style={styles.ocrText}>{document.ocrText}</Text>
-              </View>
-            </View>
-          )}
-
-          <View style={styles.metadataRow}>
-            <Text style={styles.label}>Created:</Text>
-            <Text style={styles.value}>
-              {new Date(document.createdAt).toLocaleDateString()}
-            </Text>
-          </View>
-
-          <View style={styles.metadataRow}>
-            <Text style={styles.label}>Sharing:</Text>
-            <Text style={styles.value}>
-              {document.isShared ? 'Enabled' : 'Disabled'}
-            </Text>
-          </View>
         </View>
-      </View>
 
-      {/* Document Sharing Modal */}
-      <DocumentSharing
-        documentId={document.id}
-        documentTitle={document.title}
-        visible={showSharing}
-        onClose={() => setShowSharing(false)}
+        {/* OCR Text Card */}
+        {document.ocrText && (
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>Extracted Text</Text>
+            <Text style={styles.ocrText}>{document.ocrText}</Text>
+          </View>
+        )}
+
+        {/* Actions Card */}
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleShare}
+            testID="button-share"
+          >
+            <Text style={styles.actionButtonIcon}>🔗</Text>
+            <Text style={styles.actionButtonText}>Share Document</Text>
+            <Text style={styles.actionButtonChevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+
+      {/* Contextual Menu */}
+      <ContextualMenu
+        visible={menuVisible}
+        anchorPosition={{ x: 0, y: 100 }}
+        actions={[
+          {
+            label: 'Share',
+            onPress: handleShare,
+          },
+          {
+            label: 'Delete',
+            onPress: handleDeleteDocument,
+            destructive: true,
+          },
+        ]}
+        onClose={() => setMenuVisible(false)}
       />
-    </ScrollView>
+
+      {/* Sharing Modal */}
+      {showSharing && (
+        <DocumentSharing
+          document={document}
+          onClose={() => setShowSharing(false)}
+        />
+      )}
+    </View>
+  );
+}
+
+function MetadataItem({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metadataItem}>
+      <Text style={styles.metadataLabel}>{label}</Text>
+      <Text style={styles.metadataValue}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#6b7280',
-    marginBottom: 20,
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: 60,
-    backgroundColor: 'white',
+    paddingBottom: 16,
+    backgroundColor: theme.colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: theme.colors.borderLight,
   },
-  headerActions: {
-    flexDirection: 'row',
+  backButton: {
+    paddingVertical: 8,
   },
   backButtonText: {
-    color: '#2563eb',
-    fontSize: 16,
+    fontSize: 17,
+    color: theme.colors.primary,
+    fontWeight: '500',
   },
-  actionButton: {
-    color: '#2563eb',
-    fontSize: 16,
-    marginLeft: 16,
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  deleteButton: {
-    color: '#ef4444',
+  menuButtonText: {
+    fontSize: 20,
+    color: theme.colors.textPrimary,
   },
-  content: {
-    padding: 20,
+  scrollView: {
+    flex: 1,
   },
   imageContainer: {
+    height: 300,
+    backgroundColor: theme.colors.backgroundSecondary,
+    position: 'relative',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  imagePagination: {
+    position: 'absolute',
+    bottom: 16,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  paginationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  paginationDotActive: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    alignItems: 'center',
+    width: 20,
   },
-  documentImage: {
-    width: screenWidth - 72,
-    height: (screenWidth - 72) * 1.3, // Approximate document aspect ratio
-    marginBottom: 16,
-    borderRadius: 8,
-  },
-  pageCount: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  infoSection: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+  card: {
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 16,
     padding: 20,
+    ...theme.shadows.card,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  titleContainer: {
+    flex: 1,
+    marginRight: 12,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 20,
+    fontSize: 22,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: 8,
   },
-  metadataRow: {
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 14,
+    color: theme.colors.textTertiary,
+    fontWeight: '500',
+  },
+  metaDivider: {
+    fontSize: 14,
+    color: theme.colors.textQuaternary,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: theme.colors.backgroundSecondary,
+  },
+  statusprocessing: {
+    backgroundColor: theme.colors.infoLight,
+  },
+  statusprocessed: {
+    backgroundColor: theme.colors.successLight,
+  },
+  statusfailed: {
+    backgroundColor: theme.colors.errorLight,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    textTransform: 'capitalize',
+  },
+  metadataSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+    gap: 12,
+  },
+  metadataItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
-  metadataSection: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  value: {
-    fontSize: 14,
-    color: '#6b7280',
-    flex: 1,
-    textAlign: 'right',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusprocessing: {
-    backgroundColor: '#fbbf24',
-  },
-  statusprocessed: {
-    backgroundColor: '#10b981',
-  },
-  statusfailed: {
-    backgroundColor: '#ef4444',
-  },
-  statusText: {
-    color: 'white',
-    fontSize: 12,
+  metadataLabel: {
+    fontSize: 15,
+    color: theme.colors.textTertiary,
     fontWeight: '500',
+  },
+  metadataValue: {
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
+  },
+  tagsSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
+    gap: 8,
   },
   tag: {
-    backgroundColor: '#e5e7eb',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
-    marginRight: 6,
-    marginBottom: 4,
+    backgroundColor: theme.colors.backgroundSecondary,
   },
   tagText: {
-    fontSize: 12,
-    color: '#374151',
-  },
-  ocrTextContainer: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
   ocrText: {
-    fontSize: 14,
-    color: '#374151',
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 24,
+    color: theme.colors.textSecondary,
   },
-  backButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 16,
+  actionButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 4,
+  },
+  actionButtonIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  actionButtonText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: theme.colors.textPrimary,
+  },
+  actionButtonChevron: {
+    fontSize: 20,
+    color: theme.colors.textTertiary,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 15,
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
+  },
+  bottomSpacer: {
+    height: 40,
   },
 });
