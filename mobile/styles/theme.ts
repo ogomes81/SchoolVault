@@ -1,41 +1,48 @@
-// iOS Design System Colors and Spacing
+// Stripe-Inspired Design System
 export const theme = {
   colors: {
-    // Primary colors (iOS Blue)
-    primary: '#007AFF',
-    primaryLight: '#4DA2FF',
-    primaryDark: '#0056CC',
+    // Stripe Primary Palette
+    primary: '#635BFF',        // Stripe Purple
+    primaryLight: '#7A73FF',
+    primaryDark: '#4F46E5',
     
-    // System colors
+    // Neutral Grays (Stripe-style)
+    background: '#FFFFFF',
+    backgroundSecondary: '#FAFAFA',
+    backgroundTertiary: '#F6F9FC',
+    
+    // Text Colors (Stripe hierarchy)
+    textPrimary: '#0A2540',      // Deep navy
+    textSecondary: '#425466',     // Medium gray
+    textTertiary: '#8898AA',      // Light gray
+    textQuaternary: '#A3ACB9',    // Very light gray
+    
+    // Surface Colors
+    surface: '#FFFFFF',
+    surfaceElevated: '#FFFFFF',
+    
+    // Border Colors
+    border: '#E3E8EE',
+    borderLight: '#F0F4F8',
+    borderDark: '#D0D7DE',
+    
+    // Status Colors (Stripe-style)
+    success: '#00D924',
+    successLight: '#E6F9EC',
+    warning: '#FFA900',
+    warningLight: '#FFF8E6',
+    error: '#DF1B41',
+    errorLight: '#FFE8EC',
+    info: '#0074D4',
+    infoLight: '#E6F2FF',
+    
+    // Accent Colors
+    accent: '#635BFF',
+    accentLight: '#F6F5FF',
+    
+    // Legacy iOS colors for compatibility
     systemBackground: '#FFFFFF',
-    secondarySystemBackground: '#F2F2F7',
-    tertiarySystemBackground: '#FFFFFF',
-    
-    // Labels
-    label: '#000000',
-    secondaryLabel: '#3C3C43',
-    tertiaryLabel: '#3C3C43',
-    quaternaryLabel: '#3C3C43',
-    
-    // Fills
-    systemFill: '#78788033',
-    secondarySystemFill: '#78788028',
-    tertiarySystemFill: '#7676801F',
-    quaternarySystemFill: '#74748018',
-    
-    // Separators
-    separator: '#3C3C434A',
-    opaqueSeparator: '#C6C6C8',
-    
-    // Status colors
-    success: '#34C759',
-    warning: '#FF9500',
-    error: '#FF3B30',
-    
-    // Custom app colors
-    documentBlue: '#2563EB',
-    cameraGreen: '#10B981',
-    uploadOrange: '#F59E0B',
+    secondarySystemBackground: '#FAFAFA',
   },
   
   spacing: {
@@ -116,34 +123,42 @@ export const theme = {
   },
   
   shadows: {
-    small: {
-      shadowColor: '#000000',
+    // Stripe-style subtle shadows
+    none: {
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    },
+    card: {
+      shadowColor: '#0A2540',
       shadowOffset: {
         width: 0,
         height: 1,
       },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
       elevation: 2,
     },
-    medium: {
-      shadowColor: '#000000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 4,
-    },
-    large: {
-      shadowColor: '#000000',
+    cardHover: {
+      shadowColor: '#0A2540',
       shadowOffset: {
         width: 0,
         height: 4,
       },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    large: {
+      shadowColor: '#0A2540',
+      shadowOffset: {
+        width: 0,
+        height: 8,
+      },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
       elevation: 8,
     },
   },

@@ -3,14 +3,18 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
-  Image,
-  RefreshControl,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { apiClient } from '../lib/api';
 import { signOut } from '../lib/supabase';
+import DailySummaryCard from '../components/DailySummaryCard';
+import SwipeableCard from '../components/SwipeableCard';
+import TapRipple from '../components/TapRipple';
+import ContextualMenu from '../components/ContextualMenu';
+import { theme } from '../styles/theme';
 import type { Document, Child } from '../types/shared';
 
 interface DashboardScreenProps {
@@ -31,6 +35,8 @@ export default function DashboardScreen({
   const [selectedChildId, setSelectedChildId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
   const loadData = async () => {
     try {
@@ -81,126 +87,222 @@ export default function DashboardScreen({
     );
   };
 
-  const renderDocument = ({ item }: { item: Document }) => (
-    <TouchableOpacity
-      style={styles.documentCard}
-      onPress={() => onNavigateToDocument(item.id)}
-      testID={`card-document-${item.id}`}
-    >
-      <View style={styles.documentHeader}>
-        <Text style={styles.documentTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <View style={[styles.statusBadge, styles[`status${item.status}`]]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
-      
-      <Text style={styles.documentType}>{item.docType}</Text>
-      
-      {item.dueDate && (
-        <Text style={styles.dueDate}>Due: {new Date(item.dueDate).toLocaleDateString()}</Text>
-      )}
-      
-      {item.tags.length > 0 && (
-        <View style={styles.tagsContainer}>
-          {item.tags.slice(0, 3).map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+  // Calculate metrics for daily summary
+  const today = new Date().toDateString();
+  const todayDocuments = documents.filter(
+    (doc) => new Date(doc.uploadedAt || '').toDateString() === today
+  ).length;
 
-  const renderChildFilter = ({ item }: { item: Child }) => (
-    <TouchableOpacity
-      style={[
-        styles.childButton,
-        selectedChildId === item.id && styles.childButtonSelected,
-      ]}
-      onPress={() => setSelectedChildId(selectedChildId === item.id ? undefined : item.id)}
-      testID={`button-child-${item.id}`}
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
+  const weekDocuments = documents.filter(
+    (doc) => new Date(doc.uploadedAt || '') >= weekStart
+  ).length;
+
+  const processingDocuments = documents.filter(
+    (doc) => doc.status === 'processing'
+  ).length;
+
+  const renderDocument = (doc: Document, index: number) => (
+    <SwipeableCard
+      key={doc.id}
+      index={index}
+      onSwipeLeft={() => {
+        // Handle archive/delete
+        Alert.alert('Archive', 'Archive this document?');
+      }}
+      onPress={() => onNavigateToDocument(doc.id)}
     >
-      <Text
-        style={[
-          styles.childButtonText,
-          selectedChildId === item.id && styles.childButtonTextSelected,
-        ]}
+      <TapRipple
+        onPress={() => onNavigateToDocument(doc.id)}
+        testID={`card-document-${doc.id}`}
       >
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  );
+        <View style={styles.documentCard}>
+          <View style={styles.documentHeader}>
+            <View style={styles.documentInfo}>
+              <Text style={styles.documentTitle} numberOfLines={2}>
+                {doc.title}
+              </Text>
+              <View style={styles.documentMeta}>
+                <Text style={styles.documentType}>{doc.docType}</Text>
+                {doc.dueDate && (
+                  <>
+                    <Text style={styles.metaDivider}>•</Text>
+                    <Text style={styles.dueDate}>
+                      Due {new Date(doc.dueDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </Text>
+                  </>
+                )}
+              </View>
+            </View>
+            <View style={[styles.statusBadge, styles[`status${doc.status}`]]}>
+              <Text style={styles.statusText}>{doc.status}</Text>
+            </View>
+          </View>
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading your documents...</Text>
-      </View>
-    );
-  }
+          {doc.tags.length > 0 && (
+            <View style={styles.tagsContainer}>
+              {doc.tags.slice(0, 3).map((tag, tagIndex) => (
+                <View key={tagIndex} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </TapRipple>
+    </SwipeableCard>
+  );
 
   return (
     <View style={styles.container}>
+      {/* Stripe-style header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>SchoolVault</Text>
-        <TouchableOpacity onPress={handleLogout} testID="button-logout">
-          <Text style={styles.logoutButton}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
-
-      {children.length > 0 && (
-        <View style={styles.filtersContainer}>
-          <Text style={styles.filterLabel}>Filter by child:</Text>
-          <FlatList
-            horizontal
-            data={children}
-            renderItem={renderChildFilter}
-            keyExtractor={(item) => item.id}
-            showsHorizontalScrollIndicator={false}
-            style={styles.childrenList}
-          />
-        </View>
-      )}
-
-      <View style={styles.actionBar}>
-        <View style={styles.actionRow}>
+        <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.uploadButton}
-            onPress={onNavigateToUpload}
-            testID="button-upload"
-          >
-            <Text style={styles.uploadButtonText}>+ Upload Document</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.childrenButton}
             onPress={onNavigateToChildren}
+            style={styles.iconButton}
             testID="button-manage-children"
           >
-            <Text style={styles.childrenButtonText}>👨‍👩‍👧‍👦 Manage Children</Text>
+            <Text style={styles.iconButtonText}>👨‍👩‍👧‍👦</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={(e) => {
+              const target = e.nativeEvent;
+              setMenuPosition({ x: 0, y: 100 });
+              setMenuVisible(true);
+            }}
+            style={styles.iconButton}
+            testID="button-menu"
+          >
+            <Text style={styles.iconButtonText}>⋯</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <FlatList
-        data={documents}
-        renderItem={renderDocument}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.documentsList}
+      <ScrollView
+        style={styles.scrollView}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
-        ListEmptyComponent={
+      >
+        {/* Daily Summary */}
+        <DailySummaryCard
+          todayDocuments={todayDocuments}
+          weekDocuments={weekDocuments}
+          processingDocuments={processingDocuments}
+        />
+
+        {/* Child Filter Pills */}
+        {children.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScrollView}
+            contentContainerStyle={styles.filterContainer}
+          >
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                !selectedChildId && styles.filterPillSelected,
+              ]}
+              onPress={() => setSelectedChildId(undefined)}
+              testID="button-child-all"
+            >
+              <Text
+                style={[
+                  styles.filterPillText,
+                  !selectedChildId && styles.filterPillTextSelected,
+                ]}
+              >
+                All
+              </Text>
+            </TouchableOpacity>
+            {children.map((child) => (
+              <TouchableOpacity
+                key={child.id}
+                style={[
+                  styles.filterPill,
+                  selectedChildId === child.id && styles.filterPillSelected,
+                ]}
+                onPress={() =>
+                  setSelectedChildId(
+                    selectedChildId === child.id ? undefined : child.id
+                  )
+                }
+                testID={`button-child-${child.id}`}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    selectedChildId === child.id && styles.filterPillTextSelected,
+                  ]}
+                >
+                  {child.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        {/* Section Header */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Documents</Text>
+          <Text style={styles.sectionCount}>{documents.length}</Text>
+        </View>
+
+        {/* Document Cards */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading...</Text>
+          </View>
+        ) : documents.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No documents yet</Text>
-            <Text style={styles.emptySubtext}>
-              Tap "Upload Document" to get started
+            <Text style={styles.emptyTitle}>No documents yet</Text>
+            <Text style={styles.emptyText}>
+              Tap the + button to scan your first document
             </Text>
           </View>
-        }
+        ) : (
+          <View style={styles.documentsContainer}>
+            {documents.map((doc, index) => renderDocument(doc, index))}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Floating Action Button - Stripe style */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={onNavigateToUpload}
+        testID="button-upload"
+      >
+        <Text style={styles.fabIcon}>+</Text>
+      </TouchableOpacity>
+
+      {/* Contextual Menu */}
+      <ContextualMenu
+        visible={menuVisible}
+        anchorPosition={menuPosition}
+        actions={[
+          {
+            label: 'Manage Children',
+            onPress: onNavigateToChildren,
+          },
+          {
+            label: 'Settings',
+            onPress: () => Alert.alert('Settings', 'Coming soon'),
+          },
+          {
+            label: 'Sign Out',
+            onPress: handleLogout,
+            destructive: true,
+          },
+        ]}
+        onClose={() => setMenuVisible(false)}
       />
     </View>
   );
@@ -209,192 +311,202 @@ export default function DashboardScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: 60,
-    backgroundColor: 'white',
+    paddingBottom: 16,
+    backgroundColor: theme.colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: theme.colors.borderLight,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2563eb',
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
   },
-  logoutButton: {
-    color: '#ef4444',
-    fontSize: 16,
-  },
-  filtersContainer: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  childrenList: {
-    marginVertical: 4,
-  },
-  childButton: {
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  childButtonSelected: {
-    backgroundColor: '#2563eb',
-  },
-  childButtonText: {
-    color: '#374151',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  childButtonTextSelected: {
-    color: 'white',
-  },
-  actionBar: {
-    padding: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  actionRow: {
+  headerActions: {
     flexDirection: 'row',
     gap: 12,
   },
-  uploadButton: {
-    flex: 2,
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 16,
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.backgroundSecondary,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  uploadButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+  iconButtonText: {
+    fontSize: 20,
   },
-  childrenButton: {
+  scrollView: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
   },
-  childrenButtonText: {
-    color: '#374151',
+  filterScrollView: {
+    marginTop: 16,
+    maxHeight: 50,
+  },
+  filterContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: theme.colors.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  filterPillSelected: {
+    backgroundColor: theme.colors.accentLight,
+    borderColor: theme.colors.primary,
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  filterPillTextSelected: {
+    color: theme.colors.primary,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  sectionCount: {
     fontSize: 14,
     fontWeight: '500',
-    textAlign: 'center',
+    color: theme.colors.textTertiary,
   },
-  documentsList: {
-    padding: 16,
+  documentsContainer: {
+    paddingBottom: 100,
   },
   documentCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    gap: 12,
   },
   documentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+  },
+  documentInfo: {
+    flex: 1,
+    marginRight: 12,
   },
   documentTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
-    flex: 1,
-    marginRight: 8,
+    color: theme.colors.textPrimary,
+    marginBottom: 6,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusprocessing: {
-    backgroundColor: '#fbbf24',
-  },
-  statusprocessed: {
-    backgroundColor: '#10b981',
-  },
-  statusfailed: {
-    backgroundColor: '#ef4444',
-  },
-  statusText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
+  documentMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   documentType: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
+    fontSize: 13,
+    color: theme.colors.textTertiary,
+    fontWeight: '500',
+  },
+  metaDivider: {
+    fontSize: 13,
+    color: theme.colors.textQuaternary,
   },
   dueDate: {
-    fontSize: 14,
-    color: '#dc2626',
-    fontWeight: '500',
-    marginBottom: 8,
+    fontSize: 13,
+    color: theme.colors.textTertiary,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: theme.colors.backgroundSecondary,
+  },
+  statusprocessing: {
+    backgroundColor: theme.colors.infoLight,
+  },
+  statusprocessed: {
+    backgroundColor: theme.colors.successLight,
+  },
+  statusfailed: {
+    backgroundColor: theme.colors.errorLight,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    textTransform: 'capitalize',
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 6,
   },
   tag: {
-    backgroundColor: '#e5e7eb',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
-    marginRight: 6,
-    marginBottom: 4,
+    borderRadius: 6,
+    backgroundColor: theme.colors.backgroundSecondary,
   },
   tagText: {
     fontSize: 12,
-    color: '#374151',
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 15,
+    color: theme.colors.textTertiary,
   },
   emptyContainer: {
+    padding: 40,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
   },
-  emptyText: {
-    fontSize: 18,
+  emptyTitle: {
+    fontSize: 20,
     fontWeight: '600',
-    color: '#6b7280',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
+  emptyText: {
+    fontSize: 15,
+    color: theme.colors.textTertiary,
     textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.large,
+  },
+  fabIcon: {
+    fontSize: 32,
+    color: 'white',
+    fontWeight: '300',
   },
 });
