@@ -1,18 +1,20 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   Animated,
   StyleSheet,
   GestureResponderEvent,
-  ViewProps,
+  ViewStyle,
 } from 'react-native';
 
-interface TapRippleProps extends ViewProps {
+interface TapRippleProps {
   children: React.ReactNode;
   onPress: (event: GestureResponderEvent) => void;
   delay?: number;
   rippleColor?: string;
   disabled?: boolean;
+  style?: ViewStyle;
+  testID?: string;
 }
 
 export default function TapRipple({

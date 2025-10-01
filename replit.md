@@ -66,6 +66,35 @@ The application is designed with mobile-first principles:
 - **Camera Integration**: Direct camera access for document capture on mobile devices
 - **Progressive Enhancement**: Core functionality works across all device types
 
+## React Native Mobile App (Stripe-Inspired Design)
+A native iPhone app built with React Native and Expo, featuring a professional Stripe-inspired UI:
+
+### Design System
+- **Stripe Color Palette**: Professional purple (#635BFF) as primary color with subtle grays
+- **Typography**: iOS-style text hierarchy with proper weight and spacing
+- **Shadows**: Subtle, layered shadows for depth without overwhelming the interface
+- **Spacing**: Generous white space following Stripe's clean, breathable layouts
+
+### Key Components
+- **SwipeableCard**: Card-based UI with gesture-driven interactions and depth effects
+- **DailySummaryCard**: Morning briefing with key metrics (documents today, this week, processing)
+- **TapRipple**: Material Design-inspired tap feedback with 100ms delay
+- **ContextualMenu**: Elegant, non-intrusive action menus
+- **StripeLoadingScreen**: Smooth startup animation without empty states
+
+### User Experience
+- **Card Stack Paradigm**: Documents presented as swipeable cards with dismiss gestures
+- **Smooth Animations**: Spring physics for natural, polished interactions
+- **Haptic Feedback**: Native iOS tactile responses for all actions
+- **Progressive Disclosure**: Essential information first, details on demand
+- **Native Integration**: iOS share sheet, notifications, deep linking
+
+### Architecture
+- **Framework**: Expo React Native with TypeScript
+- **Navigation**: React Navigation with screen-based routing
+- **State**: TanStack Query for server state, React hooks for local state
+- **Styling**: Stripe-inspired theme system with consistent colors and spacing
+
 # External Dependencies
 
 ## Authentication & Database

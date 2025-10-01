@@ -90,13 +90,13 @@ export default function DashboardScreen({
   // Calculate metrics for daily summary
   const today = new Date().toDateString();
   const todayDocuments = documents.filter(
-    (doc) => new Date(doc.uploadedAt || '').toDateString() === today
+    (doc) => new Date(doc.createdAt || '').toDateString() === today
   ).length;
 
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - 7);
   const weekDocuments = documents.filter(
-    (doc) => new Date(doc.uploadedAt || '') >= weekStart
+    (doc) => new Date(doc.createdAt || '') >= weekStart
   ).length;
 
   const processingDocuments = documents.filter(

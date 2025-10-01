@@ -169,7 +169,7 @@ export default function DocumentDetailScreen({
                 <Text style={styles.metaText}>{document.docType}</Text>
                 <Text style={styles.metaDivider}>•</Text>
                 <Text style={styles.metaText}>
-                  {new Date(document.uploadedAt || '').toLocaleDateString('en-US', {
+                  {new Date(document.createdAt || '').toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -274,7 +274,9 @@ export default function DocumentDetailScreen({
       {/* Sharing Modal */}
       {showSharing && (
         <DocumentSharing
-          document={document}
+          documentId={document.id}
+          documentTitle={document.title}
+          visible={showSharing}
           onClose={() => setShowSharing(false)}
         />
       )}
