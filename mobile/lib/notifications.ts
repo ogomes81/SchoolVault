@@ -9,6 +9,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -87,6 +89,10 @@ class NotificationManager {
     delaySeconds: number = 0
   ): Promise<string | null> {
     try {
+      const trigger = delaySeconds > 0 
+        ? { type: 'timeInterval' as const, seconds: delaySeconds, repeats: false }
+        : null;
+      
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title,
@@ -95,7 +101,7 @@ class NotificationManager {
           sound: 'default',
           badge: 1,
         },
-        trigger: delaySeconds > 0 ? { seconds: delaySeconds } : null,
+        trigger: trigger as any,
       });
 
       return notificationId;
@@ -180,10 +186,10 @@ class NotificationManager {
   // Remove notification listeners
   removeListeners(listeners: any) {
     if (listeners.notificationListener) {
-      Notifications.removeNotificationSubscription(listeners.notificationListener);
+      listeners.notificationListener.remove();
     }
     if (listeners.responseListener) {
-      Notifications.removeNotificationSubscription(listeners.responseListener);
+      listeners.responseListener.remove();
     }
   }
 
