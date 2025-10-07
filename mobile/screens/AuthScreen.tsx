@@ -10,6 +10,8 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { signIn, signUp } from '../lib/auth';
 
 interface AuthScreenProps {
@@ -20,17 +22,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleAuth = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (!isLogin && !fullName) {
-      Alert.alert('Error', 'Please enter your full name');
       return;
     }
 
@@ -55,162 +51,243 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     }
   };
 
+  const handleGoogleAuth = () => {
+    Alert.alert('Coming soon!', 'Google sign-in will be available in the next update.');
+  };
+
   return (
-    <KeyboardAvoidingView
+    <LinearGradient
+      colors={['#3b82f6', '#14b8a6']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.headerContainer}>
-          <Text style={styles.title}>SchoolVault</Text>
-          <Text style={styles.subtitle}>
-            {isLogin ? 'Welcome back!' : 'Create your account'}
-          </Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          {!isLogin && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Full Name</Text>
-              <TextInput
-                style={styles.input}
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="Enter your full name"
-                autoCapitalize="words"
-                testID="input-fullname"
-              />
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.card}>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="school" size={40} color="white" />
+              </View>
+              <Text style={styles.title}>SchoolVault</Text>
+              <Text style={styles.subtitle}>
+                Keep your child's school documents organized and accessible
+              </Text>
             </View>
-          )}
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              testID="input-email"
-            />
+            {/* Google Sign In */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleAuth}
+              testID="button-google-signin"
+            >
+              <Ionicons name="logo-google" size={20} color="#4285F4" />
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Email/Password Form */}
+            <View style={styles.formContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email address</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  testID="input-email"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter your password"
+                  secureTextEntry
+                  testID="input-password"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                onPress={handleAuth}
+                disabled={loading}
+                testID="button-auth"
+              >
+                <Text style={styles.submitButtonText}>
+                  {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Sign Up')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Toggle Auth Mode */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setIsLogin(!isLogin)}
+                testID="button-toggle-auth-mode"
+              >
+                <Text style={styles.footerLink}>
+                  {isLogin ? 'Sign up' : 'Sign in'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter your password"
-              secureTextEntry
-              testID="input-password"
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleAuth}
-            disabled={loading}
-            testID="button-auth"
-          >
-            <Text style={styles.buttonText}>
-              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Sign Up')}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.switchButton}
-            onPress={() => setIsLogin(!isLogin)}
-            testID="button-switch-mode"
-          >
-            <Text style={styles.switchButtonText}>
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
   },
-  headerContainer: {
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#635BFF',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2563eb',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#6b7280',
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e5e7eb',
+  },
+  dividerText: {
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: '#6b7280',
   },
   formContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 16,
   },
-  inputContainer: {
-    marginBottom: 20,
+  inputGroup: {
+    gap: 8,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#374151',
-    marginBottom: 8,
   },
   input: {
+    backgroundColor: 'white',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#e5e7eb',
     borderRadius: 8,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#fff',
+    color: '#111827',
   },
-  button: {
-    backgroundColor: '#2563eb',
+  submitButton: {
+    backgroundColor: '#635BFF',
     borderRadius: 8,
-    padding: 16,
+    paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonDisabled: {
-    backgroundColor: '#9ca3af',
+  submitButtonDisabled: {
+    opacity: 0.5,
   },
-  buttonText: {
-    color: 'white',
+  submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: 'white',
   },
-  switchButton: {
-    marginTop: 20,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 24,
   },
-  switchButtonText: {
-    color: '#2563eb',
+  footerText: {
     fontSize: 14,
+    color: '#6b7280',
+  },
+  footerLink: {
+    fontSize: 14,
+    color: '#635BFF',
+    fontWeight: '600',
   },
 });
