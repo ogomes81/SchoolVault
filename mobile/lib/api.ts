@@ -1,16 +1,14 @@
-import { supabase } from './supabase';
+import { getAuthHeaders } from './auth';
 import type { Document, Child, Profile, ApiResponse } from '../types/shared';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 class ApiClient {
   private async getAuthHeaders() {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    
+    const headers = await getAuthHeaders();
     return {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...headers,
     };
   }
 

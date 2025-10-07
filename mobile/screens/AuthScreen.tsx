@@ -10,7 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { signIn, signUp } from '../lib/supabase';
+import { signIn, signUp } from '../lib/auth';
 
 interface AuthScreenProps {
   onAuthSuccess: () => void;
@@ -37,25 +37,16 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setLoading(true);
 
     try {
-      let result;
       if (isLogin) {
-        result = await signIn(email, password);
+        await signIn(email, password);
+        onAuthSuccess();
       } else {
-        result = await signUp(email, password, fullName);
-      }
-
-      if (result.error) {
-        Alert.alert('Error', result.error);
-      } else {
-        if (isLogin) {
-          onAuthSuccess();
-        } else {
-          Alert.alert(
-            'Success',
-            'Account created! Please check your email to verify your account.',
-            [{ text: 'OK', onPress: () => setIsLogin(true) }]
-          );
-        }
+        await signUp(email, password);
+        Alert.alert(
+          'Success',
+          'Account created successfully!',
+          [{ text: 'OK', onPress: onAuthSuccess }]
+        );
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Authentication failed');

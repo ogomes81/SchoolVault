@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { supabase, getCurrentUser } from './lib/supabase';
+import { getCurrentUser } from './lib/auth';
 import { notificationManager } from './lib/notifications';
 import AuthScreen from './screens/AuthScreen';
 import DashboardScreen from './screens/DashboardScreen';
@@ -31,22 +31,8 @@ export default function App() {
 
   useEffect(() => {
     initializeApp();
-    
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        setCurrentScreen('dashboard');
-        await loadChildren();
-        await setupNotifications(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        setCurrentScreen('auth');
-        setChildren([]);
-        await cleanupNotifications();
-      }
-    });
 
     return () => {
-      subscription.unsubscribe();
       if (notificationListeners) {
         notificationManager.removeListeners(notificationListeners);
       }
