@@ -43,13 +43,18 @@ class NotificationManager {
         return false;
       }
 
-      // Get the push token
-      const token = await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId,
-      });
-      
-      this.expoPushToken = token.data;
-      console.log('Push token:', this.expoPushToken);
+      // Get the push token (skip if no project ID configured)
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      if (projectId) {
+        const token = await Notifications.getExpoPushTokenAsync({
+          projectId: projectId,
+        });
+        
+        this.expoPushToken = token.data;
+        console.log('Push token:', this.expoPushToken);
+      } else {
+        console.log('No Expo project ID configured - skipping push notifications setup');
+      }
 
       // Configure Android notification channel
       if (Platform.OS === 'android') {
