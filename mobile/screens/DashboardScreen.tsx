@@ -519,14 +519,52 @@ export default function DashboardScreen({
         </View>
       </ScrollView>
 
-      {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={onNavigateToUpload}
-        testID="button-upload"
-      >
-        <Ionicons name="camera" size={28} color="white" />
-      </TouchableOpacity>
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          testID="nav-home"
+        >
+          <Ionicons name="home" size={24} color="#635BFF" />
+          <Text style={styles.navItemTextActive}>Home</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={onNavigateToChildren}
+          testID="nav-children"
+        >
+          <Ionicons name="people-outline" size={24} color="#6b7280" />
+          <Text style={styles.navItemText}>Children</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.navItemCenter}
+          onPress={onNavigateToUpload}
+          testID="nav-upload"
+        >
+          <View style={styles.uploadButton}>
+            <Ionicons name="camera" size={28} color="white" />
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.navItem}
+          testID="nav-search"
+        >
+          <Ionicons name="search-outline" size={24} color="#6b7280" />
+          <Text style={styles.navItemText}>Search</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={handleLogout}
+          testID="nav-profile"
+        >
+          <Ionicons name="person-outline" size={24} color="#6b7280" />
+          <Text style={styles.navItemText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -628,12 +666,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 20,
-    gap: 12,
     marginTop: 16,
+    gap: 12,
   },
   statCard: {
-    flex: 1,
-    minWidth: '47%',
+    width: '48%',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -862,13 +899,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  fab: {
+  bottomNav: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingBottom: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    shadowColor: '#0A2540',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  navItemCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -30,
+  },
+  navItemText: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  navItemTextActive: {
+    fontSize: 11,
+    color: '#635BFF',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  uploadButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#635BFF',
     justifyContent: 'center',
     alignItems: 'center',
