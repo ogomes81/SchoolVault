@@ -1,7 +1,8 @@
+import Constants from 'expo-constants';
 import { getAuthHeaders } from './auth';
 import type { Document, Child, Profile, ApiResponse } from '../types/shared';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000';
 
 class ApiClient {
   private async getAuthHeaders() {
